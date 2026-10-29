@@ -24,8 +24,8 @@
 - Finds the washer again if its IP changes (UDP broadcast, then a LAN scan)
 - Checks that the washer actually started, and explains why when it didn't (for example,
   remote control switched off because the door was opened)
-- Both protocols the Candy app uses: **wifible** (newer models, e.g. ROW/RO) and **dual**
-  (DualTech Wi-Fi+NFC, e.g. GVF)
+- Both command sets the Candy app uses: **dual** and **wifible** (see
+  [Tested hardware](#tested-hardware))
 
 ## How it works
 
@@ -86,6 +86,33 @@ The washer only accepts commands while remote control is enabled **on the machin
 Opening the door switches it off. Close the door and turn remote control back on at the washer
 before starting a cycle from the app; the app tells you when it's off.
 
+## Tested hardware
+
+Developed and tested on a **Candy CSOW 4855TWE/1-S** washer-dryer (Smart Pro). The Candy cloud
+reports it as:
+
+| Field | Value |
+|---|---|
+| `appliance_type` | `washer_dryer` |
+| `interface_type` | `SMARTPRO_5DIG_STM_NEL` |
+| `connectivity` | `wifible` |
+| Command set that works | **dual** (with `PrCode` sent) |
+
+So despite the "wifible" connectivity, this model takes the **dual** command set. The
+**wifible** command set is implemented from the official app's code but hasn't been tested on a
+real machine yet.
+
+## Contributing
+
+Contributions that make this work with other Candy, Hoover or Haier washers and washer-dryers are
+very welcome, whether that's a fix, a new programme table, or just a report that your model
+works (or doesn't). Useful things to include in an issue or pull request:
+
+- Your model and the `Type`, `Connectivity`, `Interface` and `Protocol` lines that
+  `python3 bootstrap.py` prints (leave out the serial, MAC and key)
+- Which protocol setting works for starting a cycle, and anything that behaves differently
+- A status reply from the washer (`http-read.json`, decrypted), with the MAC removed
+
 ## Repository layout
 
 ```
@@ -97,6 +124,10 @@ web/                web app: FastAPI server (server.py) + single-page UI (static
 android/            Android app (Kotlin + WebView, reuses the web UI)
 docs/               protocol write-up and command reference
 ```
+
+## License
+
+[MIT](LICENSE)
 
 ## Disclaimer
 

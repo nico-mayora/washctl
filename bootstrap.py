@@ -446,6 +446,7 @@ def print_appliances(appliances: list) -> tuple[dict | None, list]:
         info = a.get("additional_info") or {}
         name = (
             a.get("appliance_model_name")
+            or a.get("appliance_model")
             or a.get("name")
             or a.get("nick_name")
             or info.get("appliance_type_name")
