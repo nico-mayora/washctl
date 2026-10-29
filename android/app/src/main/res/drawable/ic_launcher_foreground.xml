@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Washing machine glyph, kept inside the 66dp adaptive-icon safe zone -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:pathData="M41,32H67A5,5 0,0 1,72 37V71A5,5 0,0 1,67 76H41A5,5 0,0 1,36 71V37A5,5 0,0 1,41 32Z"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3" />
+    <path
+        android:pathData="M36,42H72"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M41.4,37a1.6,1.6 0,1 0,3.2 0a1.6,1.6 0,1 0,-3.2 0M47.4,37a1.6,1.6 0,1 0,3.2 0a1.6,1.6 0,1 0,-3.2 0" />
+    <path
+        android:pathData="M43,60a11,11 0,1 0,22 0a11,11 0,1 0,-22 0"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3" />
+    <path
+        android:pathData="M47,62q3.5,-3 7,0t7,0"
+        android:strokeColor="#FFFFFF"
+        android:strokeLineCap="round"
+        android:strokeWidth="2.5" />
+</vector>

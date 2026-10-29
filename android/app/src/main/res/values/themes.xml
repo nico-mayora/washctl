@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Light theme: also tells the WebView prefers-color-scheme is light -->
+    <style name="Base.AppTheme" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/bg</item>
+        <item name="android:colorAccent">@color/accent</item>
+    </style>
+    <style name="AppTheme" parent="Base.AppTheme" />
+</resources>
