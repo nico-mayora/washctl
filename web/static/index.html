@@ -176,8 +176,11 @@ input, select { font: inherit; color: inherit; }
 .view.active { display: block; }
 
 /* ---- Error / loading ---- */
-.err-banner { padding: 10px 14px; border-radius: var(--radius-sm); background: var(--red-bg); color: var(--red); font-size: 13px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
-.err-banner .dismiss { margin-left: auto; cursor: pointer; opacity: .7; }
+/* Sticks to the top of the screen so it stays visible while scrolled down to the programmes.
+   The red tint is layered over the page colour because --red-bg is translucent in dark mode. */
+.err-banner { position: sticky; top: 8px; z-index: 20; padding: 10px 6px 10px 14px; border-radius: var(--radius-sm); background: linear-gradient(var(--red-bg), var(--red-bg)), var(--bg); color: var(--red); font-size: 13px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 14px var(--shadow); }
+.err-banner.fade-in { animation: fadeIn .25s ease; }
+.err-banner .dismiss { margin-left: auto; cursor: pointer; opacity: .7; font-size: 20px; line-height: 1; padding: 4px 10px; }
 .loading { display: flex; align-items: center; justify-content: center; padding: 40px; color: var(--fg3); }
 .spinner { width: 24px; height: 24px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; margin-right: 10px; }
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -189,7 +192,7 @@ input, select { font: inherit; color: inherit; }
 
 /* ---- Toast ---- */
 .toast-container { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 100; pointer-events: none; }
-.toast { background: var(--fg); color: var(--bg); padding: 10px 20px; border-radius: 10px; font-size: 13px; font-weight: 500; opacity: 0; transition: opacity .3s; pointer-events: auto; }
+.toast { background: var(--fg); color: var(--bg); padding: 10px 20px; border-radius: 10px; font-size: 13px; font-weight: 500; opacity: 0; transition: opacity .3s; pointer-events: none; }
 .toast.show { opacity: 1; }
 
 /* ---- Scrollbar ---- */
@@ -370,6 +373,10 @@ const STEAM_NAMES = {0:'None',1:'Cotton',2:'Mixed',3:'Refresh',5:'On'};
 const OPT_NAMES = {1:'Pre-wash',2:'Hygiene',4:'Anti-crease',8:'Good Night',16:'Rinse +1',32:'Rinse +2',64:'Rinse +3',128:'Aquaplus'};
 const OPT_BITS = [1,2,4,8,16,32,64,128];
 const RINSE_BITS = [16,32,64];
+// WiFiStatus=0: the washer ignores remote commands. It turns this off when the door is
+// opened; it has to be re-enabled on the washer itself.
+const REMOTE_OFF_HINT = 'Remote control is off on the washer. Close the door and turn on remote control on the washer to start from here.';
+const REMOTE_OFF_MSG = "Can't start: remote control is off on the washer. Close the door, turn on remote control on the washer, then try again.";
 
 /* ---- API helpers ---- */
 async function api(path, opts) {
@@ -397,7 +404,11 @@ function toast(msg) {
 }
 function showError(msg) {
   document.getElementById('errText').textContent = msg;
-  document.getElementById('errBanner').style.display = 'flex';
+  const el = document.getElementById('errBanner');
+  el.style.display = 'flex';
+  el.classList.remove('fade-in');
+  void el.offsetWidth;  // restart the animation so a repeated error is noticed
+  el.classList.add('fade-in');
 }
 function hideError() { document.getElementById('errBanner').style.display = 'none'; }
 
@@ -457,7 +468,6 @@ async function pollStatus() {
   if (!config.ip || !config.key) return;
   try {
     machineStatus = await api('/api/status');
-    hideError();
     updateStatusUI();
     updateConnDot(true);
   } catch (e) {
@@ -516,6 +526,8 @@ function updateStatusUI() {
     idleHero.style.display = 'block';
     progSection.style.display = 'block';
   }
+  idleHero.querySelector('.idle-text').textContent =
+    machineStatus.remote_control_enabled === false ? REMOTE_OFF_HINT : 'Ready. Pick a programme below.';
 }
 
 function renderRunningStatus(st, paused, finished, error) {
@@ -889,10 +901,20 @@ async function doStart() {
   const btn = document.getElementById('btnStart');
   btn.disabled = true;
   btn.textContent = 'Starting...';
+  hideError();
 
   try {
+    // Check the washer will accept remote commands before sending one.
+    const st = await api('/api/status?force=true');
+    machineStatus = st;
+    if (st.remote_control_enabled === false) {
+      updateStatusUI();
+      throw new Error(REMOTE_OFF_MSG);
+    }
+
+    let resp;
     if (config.protocol === 'dual') {
-      await api('/api/dual-start', {
+      resp = await api('/api/dual-start', {
         method: 'POST',
         headers: {'Content-Type':'application/json'},
         body: JSON.stringify({
@@ -912,7 +934,7 @@ async function doStart() {
         })
       });
     } else {
-      await api('/api/start', {
+      resp = await api('/api/start', {
         method: 'POST',
         headers: {'Content-Type':'application/json'},
         body: JSON.stringify({
@@ -930,14 +952,39 @@ async function doStart() {
         })
       });
     }
-    toast('Started!');
-    selectedProg = null;
-    setTimeout(pollStatus, 3000);
+    if (resp?.response && resp.response !== 'success') {
+      throw new Error(`The washer rejected the command (reply: ${resp.response}).`);
+    }
+    toast('Sent. Checking the washer…');
+    // Keep the selection until the start is confirmed, so Start can simply be retried.
+    // The washer can accept a command and still not start, so confirm from its status.
+    setTimeout(verifyStarted, 4000);
   } catch (e) {
     showError(e.message);
   }
   btn.disabled = false;
   btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"/></svg> Start';
+}
+
+async function verifyStarted() {
+  try {
+    machineStatus = await api('/api/status?force=true');
+    updateStatusUI();
+    updateConnDot(true);
+    const mm = machineStatus.machine_mode?.[0];
+    if (mm >= 2 && mm <= 5) {
+      selectedProg = null;
+      toast(mm >= 4 ? 'Delayed start set' : 'Started!');
+    } else if (machineStatus.remote_control_enabled === false) {
+      showError(REMOTE_OFF_MSG);
+    } else if (mm === 6) {
+      showError(`The washer reported an error (code ${machineStatus.error_code}) and didn't start.`);
+    } else {
+      showError("The washer didn't start. Check the door is closed and the washer is ready, then try again.");
+    }
+  } catch (e) {
+    showError(`Couldn't confirm the washer started: ${e.message}`);
+  }
 }
 
 /* ---- Favourites ---- */
@@ -1012,6 +1059,9 @@ async function toggleFavourite() {
 }
 
 async function removeFavourite(id) {
+  // Used by both the × on a favourite and the star button, so both ask first.
+  const fav = favourites.find(f => f.id === id);
+  if (!confirm(`Remove "${fav?.name ?? 'this favourite'}" from favourites?`)) return;
   try {
     await api(`/api/favourites/${id}`, { method: 'DELETE' });
     favourites = favourites.filter(f => f.id !== id);
