@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0a0a0f" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#f8f8fa" media="(prefers-color-scheme: light)">
-<title>Washer</title>
+<title>washctl</title>
 <style>
 /* ---- Tokens ---- */
 :root {
@@ -225,7 +225,7 @@ input, select { font: inherit; color: inherit; }
 
   <!-- Header -->
   <div class="header">
-    <h1><span class="status-dot off" id="connDot"></span> Washer</h1>
+    <h1><span class="status-dot off" id="connDot"></span> washctl</h1>
     <div class="header-right">
       <button class="icon-btn" id="btnRefresh" title="Refresh status">
         <svg viewBox="0 0 24 24"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
@@ -723,7 +723,7 @@ function selectProg(prnm, prcode) {
   settings = {
     temp: prog.temperature_C?.default ?? null,
     spin: prog.spin_rpm?.default ?? null,
-    soil: prog.soil_level?.default ?? 0,
+    soil: soilInRange(prog, prog.soil_level?.default ?? 0),
     dry: isDryProg ? (prog.dry_raw === 255 ? 3 : (prog.dry_raw || 0)) : 0,
     steam: 0,
     optmsk1: 0,
@@ -925,10 +925,10 @@ async function doStart() {
           prcode: p.program_code_PrCode,
           default_temp: p.temperature_C?.default ?? 0,
           default_spin_rpm: p.spin_rpm?.default ?? 0,
-          default_soil: (p.soil_level?.default === 9 ? p.soil_level?.min : p.soil_level?.default) ?? 0,
+          default_soil: p.soil_level?.default ?? 0,
           temp: settings.temp,
           spin_rpm: settings.spin,
-          soil: settings.soil ?? null,
+          soil: soilInRange(p, settings.soil),
           optmsk: settings.optmsk1,
           steam: settings.steam,
           dry: settings.dry ?? 0,
@@ -969,8 +969,9 @@ async function doStart() {
   btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"/></svg> Start';
 }
 
-// wifible: like the official app, a soil level outside the programme's range (cloud lists use 9)
-// falls back to the programme's minimum.
+// Like the official app, a soil level outside the programme's range falls back to its minimum.
+// Candy's lists use 9 for programmes with a fixed level, e.g. Rapid 30' (level 2); Rapid 14',
+// 30' and 44' share one selector position and the washer picks the variant by soil level.
 function soilInRange(p, soil) {
   const min = p.soil_level?.min, max = p.soil_level?.max;
   if (soil == null) return 0;
