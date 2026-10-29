@@ -330,6 +330,6 @@ Collected from DEX strings, `resources.arsc`, assets and code. Relevant ones:
 
 ## 9. Deliverables
 
-- `commands.json`: every writable parameter, its values, which protocol it belongs to, and its evidence; full start, pause, resume and stop sequences.
-- `programmes.json`: demo washer-dryer programme tables (wifible and dual), 72 downloadable recipes, value legends and knob flags.
-- `candy_crypto.py`: XOR/hex encrypt and decrypt, pairing-key derivation, command and URL builders for both protocols, and a status decoder. Its self-test uses the demo keys and programmes from the APK and makes no network calls (`python3 candy_crypto.py`).
+- [`commands.json`](commands.json): every writable parameter, its values, which protocol it belongs to, and its evidence; full start, pause, resume and stop sequences.
+- [`web/programmes.json`](../web/programmes.json): demo washer-dryer programme tables (wifible and dual), 72 downloadable recipes, value legends and knob flags.
+- [`web/candy_crypto.py`](../web/candy_crypto.py): XOR/hex encrypt and decrypt, pairing-key derivation, command and URL builders for both protocols, and a status decoder. Its self-test uses the demo keys and programmes from the APK and makes no network calls (`python3 web/candy_crypto.py`).

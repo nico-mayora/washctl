@@ -1,5 +1,5 @@
 {
-  "_about": "Writable parameters for Candy Simply-Fi washers / washer-dryers, recovered statically from candy_simplify.apk (it.candy.simplyfi 3.14.1, versionCode 226). Every request goes to GET http://<appliance-ip>/http-write.json. See FINDINGS.md for evidence and the encryption scheme.",
+  "_about": "Writable parameters for Candy Simply-Fi washers / washer-dryers, recovered statically from candy_simplify.apk (it.candy.simplyfi 3.14.1, versionCode 226). Every request goes to GET http://<appliance-ip>/http-write.json. See protocol.md for evidence and the encryption scheme.",
   "_protocols": {
     "wifible": {
       "applies_to": "configured_appliances.connectivity == 'wifible' and type washer / washer_dryer (CandyApplianceFactory -> washer.axibianca.model.Washer / WasherDryer). Interface types: bianca, red_devil_*, RAPIDO*, XCARE*, HWASH300*, SMARTPRO*, HWASH700.",
@@ -11,7 +11,7 @@
       "builder": "it.candyhoover.core.models.commands.CandyWasherDTCommand.getParameterString -> CandyWasherCommand.getParameterString",
       "confidence": "high"
     },
-    "how_to_tell_which": "The app learns connectivity/interface_type from the cloud appliance record (appliances.json: 'connectivity', 'interface_type'). Without the cloud, guess from the model or try a read: both use the same http-read.json. Treat as an open question (see FINDINGS.md)."
+    "how_to_tell_which": "The app learns connectivity/interface_type from the cloud appliance record (appliances.json: 'connectivity', 'interface_type'). Without the cloud, guess from the model or try a read: both use the same http-read.json. Treat as an open question (see protocol.md)."
   },
 
   "parameters": [
@@ -86,7 +86,7 @@
       "name": "DelVl", "protocols": ["wifible", "dual"], "meaning": "delayed start / delayed end",
       "values": "integer number of 30-minute steps, 0..48 (0 = start now). wifible: StSt=1&DelVl=n. dual: DelMd=1&DelVl=n replaces StSt=1. Stop of a delayed cycle sends DelVl=0 (wifible) / DelMd=0 (dual).",
       "evidence": "Command.Param.DELAY(\"DelVl\"); AbMaterialTimePicker steps mDelay by 1 per 30 min (max 48); AbDelayStartFragment.saveEndExit adds offsetHours*2; CandyWasherCommand '&DelMd=1&DelVl=%@'",
-      "confidence": "medium (unit inferred from picker; status DelVal is displayed as minutes, see FINDINGS open questions)"
+      "confidence": "medium (unit inferred from picker; status DelVal is displayed as minutes, see protocol.md open questions)"
     },
     {
       "name": "DelMd", "protocols": ["dual"], "meaning": "delay mode", "values": {"1": "delayed start armed", "0": "no delay / cancel"},

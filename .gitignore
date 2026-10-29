@@ -1,4 +1,12 @@
-/web/.env
-/web/__pycache__
-/web/config.json
-/rea/candy_simplify.apk
+# Local, per-user data: never commit (contains your washer's key, MAC, IP, account login)
+.env
+web/config.json
+web/favourites.json
+web/my_programmes.json
+
+# APKs: the vendor app used for the protocol analysis, and our own builds
+*.apk
+
+# Python
+__pycache__/
+.venv/

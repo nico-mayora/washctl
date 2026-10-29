@@ -2,12 +2,13 @@
 """Retrieve your washer-dryer's encryption key from the Candy cloud.
 
 Usage:
-    python3 get_key.py
-    python3 get_key.py --email you@example.com --password yourpass
-    python3 get_key.py --email you@example.com --password yourpass --save
+    python3 bootstrap.py
+    python3 bootstrap.py --email you@example.com --password yourpass
+    python3 bootstrap.py --email you@example.com --password yourpass --save
 
-With --save, writes the first appliance's config to config.json so the web
-UI only needs the IP filled in.
+With --save, finds the washer on the LAN and writes web/config.json (IP, key,
+protocol, MAC) and web/my_programmes.json (your washer's programme list). Both
+files are local only (gitignored); the web app and Android build pick them up.
 
 Authentication goes through the real Salesforce CIAM login page (headless
 Chromium via Playwright), exactly as the mobile app does it.
@@ -46,7 +47,9 @@ REDIRECT_URI = "candy://mobilesdk/detect/oauth/done"
 # Simply-Fi API
 SIMPLY_FI_BASE = "https://simply-fi.herokuapp.com"
 
-ENV_PATH = Path(__file__).parent / ".env"
+ROOT = Path(__file__).resolve().parent
+WEB_DIR = ROOT / "web"  # where the web app and the Android build look for config/programmes
+ENV_PATH = ROOT / ".env"
 SCRATCHPAD = Path("/tmp/candy_debug")
 
 
@@ -591,7 +594,7 @@ async def async_main():
         print("No washer/washer-dryer with a key found; config not saved.")
         return
 
-    cfg_path = Path(__file__).parent / "config.json"
+    cfg_path = WEB_DIR / "config.json"
     print(f"\nKey: {washer_config['key']}")
     print(f"Protocol: {washer_config['protocol']}")
     print(f"MAC: {washer_config['mac']}")
@@ -599,7 +602,7 @@ async def async_main():
     # Auto-discover IP via UDP broadcast, then LAN scan fallback
     import importlib.util
     _spec = importlib.util.spec_from_file_location(
-        "discover", Path(__file__).parent / "discover.py"
+        "discover", WEB_DIR / "discover.py"
     )
     _mod = importlib.util.module_from_spec(_spec)
     _spec.loader.exec_module(_mod)
@@ -629,7 +632,7 @@ async def async_main():
     # Convert and save real programmes from the cloud
     if raw_cloud_progs:
         converted = convert_cloud_programmes(raw_cloud_progs)
-        progs_path = Path(__file__).parent / "my_programmes.json"
+        progs_path = WEB_DIR / "my_programmes.json"
         progs_path.write_text(json.dumps(converted, indent=2))
         print(f"Saved {len(converted)} programmes to {progs_path}")
 

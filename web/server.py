@@ -240,7 +240,7 @@ def get_programmes():
     cfg = load_config()
     proto = cfg.get("protocol", "wifible")
 
-    # Prefer real programmes from cloud (saved by get_key.py --save)
+    # Prefer real programmes from cloud (saved by bootstrap.py --save)
     if MY_PROGRAMMES_PATH.exists():
         progs = json.loads(MY_PROGRAMMES_PATH.read_text())
     else:
@@ -331,7 +331,7 @@ async def discover_washer(timeout: float = Query(default=15.0, le=60.0)):
     cfg = load_config()
     mac = cfg.get("mac")
     if not mac:
-        raise HTTPException(400, "No MAC address in config — run get_key.py --save first")
+        raise HTTPException(400, "No MAC address in config — run bootstrap.py --save first")
     result = await discover_async(mac=mac, timeout=timeout)
     if not result:
         return {"ok": False, "error": f"No broadcast received within {timeout}s"}

@@ -299,7 +299,7 @@ def decode_status(body: Union[str, dict], key: str | None = None) -> dict:
     out["spin_rpm"] = None if sp is None else (sp * 100 if sp < 100 else sp)
     out["soil_level"] = i("SLevel")
     out["remaining_time_s"] = i("RemTime")          # seconds (inferred)
-    out["delay_value"] = i("DelVal")                # unit unclear, see FINDINGS.md
+    out["delay_value"] = i("DelVal")                # unit unclear, see docs/protocol.md
     out["remote_control_enabled"] = (st.get("WiFiStatus") in ("1", 1, "true")) if "WiFiStatus" in st else None
     out["error_code"] = st.get("Err")
     mask = 0
@@ -359,9 +359,9 @@ def _selftest() -> None:
     d = dual_start(prnm=6, default_temp=40, default_spin_rpm=1400, default_soil=3,
                    temp=60, spin_rpm=1000, optmsk=1, dry=3)
     assert d == ("Write=1&Pa=0&Sel=0&PrNm=6&StSt=1&TmpTgt=60&TmpDf=40&SpdTgt=10&SpdDef=14"
-                 "&OptMsk=1&Stm=0&Option=3&RecipeId=0&CheckUpState=0"), d
+                 "&OptMsk=1&Stm=0&Dry=3&Option=3&RecipeId=0&CheckUpState=0"), d
     assert dual_start(prnm=6, default_temp=40, default_spin_rpm=1400, default_soil=3,
-                      delay_steps=4).startswith("Write=1&Pa=0&Sel=0&PrNm=6&DelMd=1&DelVl=4&OptMsk=0")
+                      delay_steps=4).startswith("Write=1&Pa=0&Sel=0&PrNm=6&DelMd=1&DelVl=4&Stm=0")  # OptMsk omitted when 0
     assert dual_stop(6) == "Write=1&StSt=0&DelMd=0&PrNm=6"
 
     # Unencrypted debug URL form.
