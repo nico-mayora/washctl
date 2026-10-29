@@ -96,11 +96,11 @@ reports it as:
 | `appliance_type` | `washer_dryer` |
 | `interface_type` | `SMARTPRO_5DIG_STM_NEL` |
 | `connectivity` | `wifible` |
-| Command set that works | **dual** (with `PrCode` sent) |
+| Command sets that work | **wifible** and **dual** (with `PrCode` sent) |
 
-So despite the "wifible" connectivity, this model takes the **dual** command set. The
-**wifible** command set is implemented from the official app's code but hasn't been tested on a
-real machine yet.
+Both command sets start cycles on this model. **wifible** is the one the official app uses for
+it (it follows `connectivity`) and the only one with **pause and resume**, so pick it in the
+settings if your machine accepts it.
 
 ## Contributing
 
