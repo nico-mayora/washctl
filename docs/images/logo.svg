@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="22 22 64 64" width="128" height="128" role="img" aria-label="Washer logo">
+  <rect x="22" y="22" width="64" height="64" rx="15" fill="#4361EE"/>
+  <g fill="none" stroke="#FFFFFF" stroke-width="3">
+    <path d="M41,32H67A5,5 0 0 1 72,37V71A5,5 0 0 1 67,76H41A5,5 0 0 1 36,71V37A5,5 0 0 1 41,32Z"/>
+    <path d="M36,42H72"/>
+    <circle cx="54" cy="60" r="11"/>
+    <path d="M47,62q3.5,-3 7,0t7,0" stroke-width="2.5" stroke-linecap="round"/>
+  </g>
+  <circle cx="43" cy="37" r="1.6" fill="#FFFFFF"/>
+  <circle cx="49" cy="37" r="1.6" fill="#FFFFFF"/>
+</svg>
