@@ -1,0 +1,1073 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0f" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f8f8fa" media="(prefers-color-scheme: light)">
+<title>Washer</title>
+<style>
+/* ---- Tokens ---- */
+:root {
+  --bg: #f8f8fa; --bg2: #ffffff; --bg3: #f0f0f4;
+  --fg: #1a1a2e; --fg2: #555568; --fg3: #8888a0;
+  --accent: #4361ee; --accent2: #3a56d4; --accent-fg: #fff;
+  --green: #22c55e; --green-bg: #dcfce7;
+  --amber: #f59e0b; --amber-bg: #fef3c7;
+  --red: #ef4444; --red-bg: #fee2e2;
+  --blue: #3b82f6; --blue-bg: #dbeafe;
+  --border: #e2e2ea; --shadow: rgba(0,0,0,.06);
+  --radius: 14px; --radius-sm: 10px;
+  --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --mono: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
+  --ring: 0 0 0 3px rgba(67,97,238,.25);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0a0a0f; --bg2: #16161f; --bg3: #1e1e2a;
+    --fg: #e8e8f0; --fg2: #9999b0; --fg3: #666680;
+    --accent: #6381ff; --accent2: #7b95ff; --accent-fg: #0a0a0f;
+    --green: #4ade80; --green-bg: rgba(34,197,94,.15);
+    --amber: #fbbf24; --amber-bg: rgba(245,158,11,.15);
+    --red: #f87171; --red-bg: rgba(239,68,68,.15);
+    --blue: #60a5fa; --blue-bg: rgba(59,130,246,.15);
+    --border: #2a2a38; --shadow: rgba(0,0,0,.3);
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0a0a0f; --bg2: #16161f; --bg3: #1e1e2a;
+  --fg: #e8e8f0; --fg2: #9999b0; --fg3: #666680;
+  --accent: #6381ff; --accent2: #7b95ff; --accent-fg: #0a0a0f;
+  --green: #4ade80; --green-bg: rgba(34,197,94,.15);
+  --amber: #fbbf24; --amber-bg: rgba(245,158,11,.15);
+  --red: #f87171; --red-bg: rgba(239,68,68,.15);
+  --blue: #60a5fa; --blue-bg: rgba(59,130,246,.15);
+  --border: #2a2a38; --shadow: rgba(0,0,0,.3);
+}
+
+/* ---- Reset & base ---- */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  font-family: var(--font); background: var(--bg); color: var(--fg);
+  line-height: 1.5; min-height: 100dvh;
+  -webkit-font-smoothing: antialiased;
+}
+button { font: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+input, select { font: inherit; color: inherit; }
+
+/* ---- Layout ---- */
+.app { max-width: 480px; margin: 0 auto; padding: 0 16px env(safe-area-inset-bottom); min-height: 100dvh; display: flex; flex-direction: column; }
+.spacer { flex: 1; }
+
+/* ---- Header ---- */
+.header { display: flex; align-items: center; justify-content: space-between; padding: 16px 0 8px; }
+.header h1 { font-size: 20px; font-weight: 700; letter-spacing: -.02em; }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+.status-dot.ok { background: var(--green); box-shadow: 0 0 6px var(--green); }
+.status-dot.err { background: var(--red); }
+.status-dot.off { background: var(--fg3); }
+.header-right { display: flex; gap: 8px; align-items: center; }
+.icon-btn { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; background: var(--bg3); transition: background .15s; }
+.icon-btn:hover { background: var(--border); }
+.icon-btn svg { width: 18px; height: 18px; stroke: var(--fg2); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ---- Cards ---- */
+.card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 3px var(--shadow); }
+.card-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--fg3); margin-bottom: 10px; }
+
+/* ---- Machine status ---- */
+.machine-status { text-align: center; padding: 24px 16px; }
+.machine-ring { width: 180px; height: 180px; margin: 0 auto 16px; position: relative; }
+.machine-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.machine-ring .track { fill: none; stroke: var(--bg3); stroke-width: 6; }
+.machine-ring .progress { fill: none; stroke: var(--accent); stroke-width: 6; stroke-linecap: round; transition: stroke-dashoffset .8s ease; }
+.machine-ring .progress.drying { stroke: var(--amber); }
+.machine-ring .progress.paused { stroke: var(--fg3); }
+.ring-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.ring-time { font-size: 36px; font-weight: 700; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.ring-label { font-size: 13px; color: var(--fg2); margin-top: 2px; }
+
+.status-pills { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 12px; }
+.pill { font-size: 12px; font-weight: 500; padding: 4px 10px; border-radius: 20px; }
+.pill.green { background: var(--green-bg); color: var(--green); }
+.pill.amber { background: var(--amber-bg); color: var(--amber); }
+.pill.red { background: var(--red-bg); color: var(--red); }
+.pill.blue { background: var(--blue-bg); color: var(--blue); }
+
+.status-detail { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 16px; }
+.detail-item { text-align: center; }
+.detail-val { font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.detail-label { font-size: 11px; color: var(--fg3); margin-top: 1px; }
+
+/* ---- Action bar ---- */
+.action-bar { display: flex; gap: 10px; padding: 12px 0; }
+.action-bar.sticky { position: sticky; bottom: 0; background: var(--bg); padding: 12px 0 max(12px, env(safe-area-inset-bottom)); z-index: 10; }
+.btn { flex: 1; height: 52px; border-radius: var(--radius-sm); font-size: 15px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all .15s; }
+.btn:active { transform: scale(.97); }
+.btn-primary { background: var(--accent); color: var(--accent-fg); }
+.btn-primary:hover { background: var(--accent2); }
+.btn-danger { background: var(--red); color: #fff; }
+.btn-danger:hover { opacity: .9; }
+.btn-outline { border: 1.5px solid var(--border); color: var(--fg); }
+.btn-outline:hover { background: var(--bg3); }
+.btn-amber { background: var(--amber); color: #000; }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+
+/* ---- Programme picker ---- */
+.programme-grid { display: flex; flex-direction: column; gap: 6px; }
+.prog-item { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: var(--radius-sm); border: 1.5px solid var(--border); cursor: pointer; transition: all .15s; }
+.prog-item:hover { border-color: var(--accent); background: var(--bg3); }
+.prog-item.selected { border-color: var(--accent); background: rgba(67,97,238,.08); }
+.prog-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+.prog-icon.wash { background: var(--blue-bg); }
+.prog-icon.dry { background: var(--amber-bg); }
+.prog-icon.wd { background: linear-gradient(135deg, rgba(59,130,246,.15), rgba(245,158,11,.15)); }
+.prog-icon.util { background: var(--bg3); }
+.prog-info { flex: 1; min-width: 0; }
+.prog-name { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.prog-meta { font-size: 12px; color: var(--fg3); display: flex; gap: 8px; margin-top: 1px; }
+.prog-badge { font-size: 11px; font-weight: 500; padding: 2px 6px; border-radius: 4px; background: var(--bg3); color: var(--fg2); white-space: nowrap; }
+.prog-group-label { font-size: 12px; font-weight: 600; color: var(--fg3); text-transform: uppercase; letter-spacing: .05em; padding: 10px 0 4px; }
+.prog-group-label:first-child { padding-top: 0; }
+
+/* ---- Settings panel ---- */
+.settings-panel { display: flex; flex-direction: column; gap: 14px; }
+.setting-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.setting-label { font-size: 13px; font-weight: 500; color: var(--fg2); flex-shrink: 0; }
+.setting-control { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; max-width: 70%; }
+.chip { font-size: 13px; font-weight: 500; padding: 6px 12px; border-radius: 8px; border: 1.5px solid var(--border); cursor: pointer; transition: all .12s; white-space: nowrap; user-select: none; }
+.chip:hover { border-color: var(--fg3); }
+.chip.active { border-color: var(--accent); background: rgba(67,97,238,.1); color: var(--accent); }
+.chip:has(input:checked) { border-color: var(--accent); background: rgba(67,97,238,.1); color: var(--accent); }
+.chip input { display: none; }
+
+.toggle-row { display: flex; align-items: center; gap: 10px; }
+.toggle { position: relative; width: 44px; height: 26px; background: var(--bg3); border: 1.5px solid var(--border); border-radius: 13px; cursor: pointer; transition: all .2s; flex-shrink: 0; }
+.toggle.on { background: var(--accent); border-color: var(--accent); }
+.toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: transform .2s; box-shadow: 0 1px 3px rgba(0,0,0,.15); }
+.toggle.on::after { transform: translateX(18px); }
+
+.option-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.opt-chip { font-size: 12px; padding: 5px 10px; border-radius: 6px; border: 1.5px solid var(--border); cursor: pointer; transition: all .12s; user-select: none; }
+.opt-chip:hover { border-color: var(--fg3); }
+.opt-chip.active { border-color: var(--accent); background: rgba(67,97,238,.1); color: var(--accent); }
+
+/* ---- Delay picker ---- */
+.delay-picker { display: flex; align-items: center; gap: 8px; }
+.delay-picker button { width: 32px; height: 32px; border-radius: 8px; background: var(--bg3); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 600; color: var(--fg2); }
+.delay-picker button:hover { background: var(--border); }
+.delay-val { font-size: 14px; font-weight: 600; min-width: 48px; text-align: center; font-variant-numeric: tabular-nums; }
+
+/* ---- Config screen ---- */
+.config-screen { padding: 20px 0; }
+.field { margin-bottom: 16px; }
+.field label { display: block; font-size: 13px; font-weight: 500; color: var(--fg2); margin-bottom: 6px; }
+.field input, .field select { width: 100%; height: 44px; padding: 0 12px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); background: var(--bg2); font-size: 14px; outline: none; transition: border-color .15s; }
+.field input:focus, .field select:focus { border-color: var(--accent); box-shadow: var(--ring); }
+.field .hint { font-size: 12px; color: var(--fg3); margin-top: 4px; }
+
+.probe-result { padding: 10px 12px; border-radius: 8px; font-size: 13px; margin-top: 8px; }
+.probe-result.ok { background: var(--green-bg); color: var(--green); }
+.probe-result.fail { background: var(--red-bg); color: var(--red); }
+
+/* ---- Views ---- */
+.view { display: none; }
+.view.active { display: block; }
+
+/* ---- Error / loading ---- */
+.err-banner { padding: 10px 14px; border-radius: var(--radius-sm); background: var(--red-bg); color: var(--red); font-size: 13px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+.err-banner .dismiss { margin-left: auto; cursor: pointer; opacity: .7; }
+.loading { display: flex; align-items: center; justify-content: center; padding: 40px; color: var(--fg3); }
+.spinner { width: 24px; height: 24px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; margin-right: 10px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---- Idle state ---- */
+.idle-hero { text-align: center; padding: 32px 0 16px; }
+.idle-icon { font-size: 48px; margin-bottom: 8px; opacity: .7; }
+.idle-text { font-size: 14px; color: var(--fg2); }
+
+/* ---- Toast ---- */
+.toast-container { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 100; pointer-events: none; }
+.toast { background: var(--fg); color: var(--bg); padding: 10px 20px; border-radius: 10px; font-size: 13px; font-weight: 500; opacity: 0; transition: opacity .3s; pointer-events: auto; }
+.toast.show { opacity: 1; }
+
+/* ---- Scrollbar ---- */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* ---- Favourites ---- */
+.fav-list { display: flex; flex-direction: column; gap: 6px; }
+.fav-item { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: var(--radius-sm); border: 1.5px solid var(--border); cursor: pointer; transition: all .15s; }
+.fav-item:hover { border-color: var(--accent); background: var(--bg3); }
+.fav-item:active { transform: scale(.98); }
+.fav-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; background: linear-gradient(135deg, rgba(67,97,238,.12), rgba(99,129,255,.12)); }
+.fav-info { flex: 1; min-width: 0; }
+.fav-name { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fav-meta { font-size: 12px; color: var(--fg3); display: flex; gap: 8px; margin-top: 1px; }
+.fav-remove { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--fg3); transition: all .15s; }
+.fav-remove:hover { background: var(--red-bg); color: var(--red); }
+.btn-star { background: var(--bg3); color: var(--fg2); border: 1.5px solid var(--border); flex: 0 0 52px; }
+.btn-star:hover { border-color: var(--amber); color: var(--amber); }
+.btn-star.saved { border-color: var(--amber); color: var(--amber); background: var(--amber-bg); }
+
+/* ---- Transitions ---- */
+.fade-in { animation: fadeIn .25s ease; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+
+  <!-- Header -->
+  <div class="header">
+    <h1><span class="status-dot off" id="connDot"></span> Washer</h1>
+    <div class="header-right">
+      <button class="icon-btn" id="btnRefresh" title="Refresh status">
+        <svg viewBox="0 0 24 24"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+      </button>
+      <button class="icon-btn" id="btnConfig" title="Settings">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Error banner -->
+  <div id="errBanner" class="err-banner" style="display:none">
+    <span id="errText"></span>
+    <span class="dismiss" onclick="hideError()">&times;</span>
+  </div>
+
+  <!-- ============ MAIN VIEW ============ -->
+  <div id="viewMain" class="view active">
+
+    <!-- Machine status (shown when active) -->
+    <div id="statusCard" class="card machine-status" style="display:none">
+      <div class="machine-ring">
+        <svg viewBox="0 0 180 180">
+          <circle class="track" cx="90" cy="90" r="82"/>
+          <circle class="progress" id="ringProgress" cx="90" cy="90" r="82"
+                  stroke-dasharray="515.22" stroke-dashoffset="515.22"/>
+        </svg>
+        <div class="ring-center">
+          <div class="ring-time" id="ringTime">--:--</div>
+          <div class="ring-label" id="ringLabel">idle</div>
+        </div>
+      </div>
+      <div id="statusProgName" style="font-size:16px;font-weight:600;margin-bottom:4px"></div>
+      <div class="status-pills" id="statusPills"></div>
+      <div class="status-detail" id="statusDetail"></div>
+    </div>
+
+    <!-- Action bar (when running) -->
+    <div id="runActions" class="action-bar" style="display:none"></div>
+
+    <!-- Idle hero -->
+    <div id="idleHero" class="idle-hero" style="display:none">
+      <div class="idle-icon">🫧</div>
+      <div class="idle-text">Ready. Pick a programme below.</div>
+    </div>
+
+    <!-- Not configured -->
+    <div id="notConfigured" class="card" style="display:none; text-align:center; padding:32px 16px;">
+      <div style="font-size:36px; margin-bottom:8px;">⚙️</div>
+      <div style="font-size:15px; font-weight:600; margin-bottom:4px;">Set up your washer</div>
+      <div style="font-size:13px; color:var(--fg2); margin-bottom:16px;">Enter your washer's IP address and encryption key to get started.</div>
+      <button class="btn btn-primary" style="max-width:200px;margin:0 auto" onclick="showView('config')">Configure</button>
+    </div>
+
+    <!-- Programme picker -->
+    <div id="progSection" style="display:none">
+      <!-- Favourites -->
+      <div id="favCard" class="card" style="display:none">
+        <div class="card-title">Favourites</div>
+        <div class="fav-list" id="favList"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Programme</div>
+        <div class="programme-grid" id="progGrid"></div>
+      </div>
+
+      <!-- Settings (after selecting a programme) -->
+      <div id="settingsCard" class="card fade-in" style="display:none">
+        <div class="card-title">Settings</div>
+        <div class="settings-panel" id="settingsPanel"></div>
+      </div>
+
+      <!-- Start bar -->
+      <div id="startBar" class="action-bar sticky" style="display:none">
+        <button class="btn btn-primary" id="btnStart" onclick="doStart()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          Start
+        </button>
+        <button class="btn btn-star" id="btnFav" onclick="toggleFavourite()" title="Save as favourite">
+          <svg width="20" height="20" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ CONFIG VIEW ============ -->
+  <div id="viewConfig" class="view">
+    <div class="config-screen fade-in">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:20px">
+        <button class="icon-btn" onclick="showView('main')" title="Back">
+          <svg viewBox="0 0 24 24"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+        </button>
+        <h2 style="font-size:18px;font-weight:700">Configuration</h2>
+      </div>
+      <div class="field">
+        <label>Washer IP address</label>
+        <input type="text" id="cfgIp" placeholder="192.168.1.xxx" inputmode="decimal">
+        <div class="hint">Find this in your router's connected devices, or the Candy app's debug screen.</div>
+      </div>
+      <div class="field">
+        <label>Encryption key</label>
+        <input type="text" id="cfgKey" placeholder="16 characters (a-n)" maxlength="32" spellcheck="false" autocomplete="off">
+        <div class="hint">From the Candy cloud (appliances.json → encryption_key) or a rooted phone's app database.</div>
+      </div>
+      <div class="field">
+        <label>Protocol</label>
+        <select id="cfgProto">
+          <option value="wifible">wifible (newer, e.g. ROW/RO models)</option>
+          <option value="dual">dual (DualTech Wi-Fi+NFC, e.g. GVF models)</option>
+        </select>
+        <div class="hint">If unsure, try wifible first. ROW/RO → wifible, GVF → dual.</div>
+      </div>
+      <div class="action-bar">
+        <button class="btn btn-outline" id="btnProbe" onclick="doProbe()">Test connection</button>
+        <button class="btn btn-primary" id="btnSaveCfg" onclick="saveConfig()">Save</button>
+      </div>
+      <div id="probeResult" style="display:none"></div>
+    </div>
+  </div>
+
+  <div class="spacer"></div>
+</div>
+
+<div class="toast-container"><div class="toast" id="toast"></div></div>
+
+<script>
+/* ---- State ---- */
+let config = { ip: '', key: '', protocol: 'wifible' };
+let programmes = [];
+let programmesMeta = {};
+let selectedProg = null;
+let settings = {};
+let machineStatus = null;
+let pollTimer = null;
+let isActive = false;
+let favourites = [];
+
+const PHASE_NAMES = {0:'Idle',1:'Pre-wash',2:'Washing',3:'Rinsing',4:'Final rinse',5:'Finishing',6:'Drying',7:'Error',8:'Steaming',9:'Paused (Good Night)',255:'—'};
+const MODE_NAMES = {0:'Off',1:'Ready',2:'Running',3:'Paused',4:'Delay set',5:'Counting down',6:'Error',7:'Finished'};
+const DRY_NAMES_WIFIBLE = {0:'None',1:'Extra',2:'Iron',3:'Cupboard',5:'120 min',6:'90 min',7:'60 min',8:'30 min',9:'Wool'};
+const DRY_NAMES_DUAL = {0:'None',1:'Extra',2:'Cupboard',3:'Iron',5:'120 min',6:'90 min',7:'60 min',8:'30 min',9:'Wool'};
+function dryName(v) { return (config.protocol === 'dual' ? DRY_NAMES_DUAL : DRY_NAMES_WIFIBLE)[v] || String(v); }
+const STEAM_NAMES = {0:'None',1:'Cotton',2:'Mixed',3:'Refresh',5:'On'};
+const OPT_NAMES = {1:'Pre-wash',2:'Hygiene',4:'Anti-crease',8:'Good Night',16:'Rinse +1',32:'Rinse +2',64:'Rinse +3',128:'Aquaplus'};
+const OPT_BITS = [1,2,4,8,16,32,64,128];
+const RINSE_BITS = [16,32,64];
+
+/* ---- API helpers ---- */
+async function api(path, opts) {
+  try {
+    const r = await fetch(path, opts);
+    if (!r.ok) {
+      const t = await r.text();
+      let msg;
+      try { msg = JSON.parse(t).detail; } catch { msg = t; }
+      throw new Error(msg || `HTTP ${r.status}`);
+    }
+    return r.json();
+  } catch (e) {
+    if (e.name === 'TypeError') throw new Error('Server unreachable');
+    throw e;
+  }
+}
+
+/* ---- Toast / Error ---- */
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2500);
+}
+function showError(msg) {
+  document.getElementById('errText').textContent = msg;
+  document.getElementById('errBanner').style.display = 'flex';
+}
+function hideError() { document.getElementById('errBanner').style.display = 'none'; }
+
+/* ---- Views ---- */
+function showView(name) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view' + name.charAt(0).toUpperCase() + name.slice(1)).classList.add('active');
+  if (name === 'config') loadConfigUI();
+}
+
+/* ---- Config ---- */
+async function loadConfig() {
+  try {
+    config = await api('/api/config');
+  } catch { config = { ip: '', key: '', protocol: 'wifible' }; }
+}
+function loadConfigUI() {
+  document.getElementById('cfgIp').value = config.ip || '';
+  document.getElementById('cfgKey').value = config.key || '';
+  document.getElementById('cfgProto').value = config.protocol || 'wifible';
+  document.getElementById('probeResult').style.display = 'none';
+}
+async function saveConfig() {
+  const ip = document.getElementById('cfgIp').value.trim();
+  const key = document.getElementById('cfgKey').value.trim();
+  const protocol = document.getElementById('cfgProto').value;
+  if (!ip || !key) { showError('IP and key are required'); return; }
+  try {
+    await api('/api/config', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ip, key, protocol}) });
+    config = {ip, key, protocol};
+    toast('Saved');
+    showView('main');
+    init();
+  } catch (e) { showError(e.message); }
+}
+async function doProbe() {
+  const ip = document.getElementById('cfgIp').value.trim();
+  const key = document.getElementById('cfgKey').value.trim();
+  const el = document.getElementById('probeResult');
+  if (!ip || !key) { el.className = 'probe-result fail'; el.textContent = 'Enter IP and key first'; el.style.display = 'block'; return; }
+  el.className = 'probe-result'; el.textContent = 'Testing...'; el.style.display = 'block';
+  try {
+    const r = await api(`/api/probe?ip=${encodeURIComponent(ip)}&key=${encodeURIComponent(key)}`);
+    if (r.ok) {
+      const mode = r.status?.machine_mode?.[1] || 'unknown';
+      el.className = 'probe-result ok';
+      el.textContent = `Connected! Machine is: ${mode}`;
+    } else {
+      el.className = 'probe-result fail';
+      el.textContent = r.error || 'Connection failed';
+    }
+  } catch (e) { el.className = 'probe-result fail'; el.textContent = e.message; }
+}
+
+/* ---- Status polling ---- */
+async function pollStatus() {
+  if (!config.ip || !config.key) return;
+  try {
+    machineStatus = await api('/api/status');
+    hideError();
+    updateStatusUI();
+    updateConnDot(true);
+  } catch (e) {
+    updateConnDot(false);
+    if (!machineStatus) showIdleUI();
+  }
+}
+function showIdleUI() {
+  document.getElementById('notConfigured').style.display = 'none';
+  document.getElementById('statusCard').style.display = 'none';
+  document.getElementById('runActions').style.display = 'none';
+  document.getElementById('idleHero').style.display = 'block';
+  document.getElementById('progSection').style.display = 'block';
+}
+function startPolling() {
+  stopPolling();
+  pollStatus();
+  pollTimer = setInterval(pollStatus, 5000);
+}
+function stopPolling() { if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } }
+
+function updateConnDot(ok) {
+  const dot = document.getElementById('connDot');
+  dot.className = 'status-dot ' + (ok ? 'ok' : (config.ip ? 'err' : 'off'));
+}
+
+/* ---- Render status ---- */
+function updateStatusUI() {
+  if (!machineStatus) return;
+  const mm = machineStatus.machine_mode?.[0];
+  isActive = mm >= 2 && mm <= 5;
+  const isFinished = mm === 7;
+  const isError = mm === 6;
+  const isPaused = mm === 3;
+
+  if (isActive) dismissedFinished = false;
+
+  const statusCard = document.getElementById('statusCard');
+  const idleHero = document.getElementById('idleHero');
+  const progSection = document.getElementById('progSection');
+  const runActions = document.getElementById('runActions');
+  const notCfg = document.getElementById('notConfigured');
+
+  notCfg.style.display = 'none';
+
+  if (isActive || ((isFinished || isError) && !dismissedFinished)) {
+    statusCard.style.display = 'block';
+    idleHero.style.display = 'none';
+    progSection.style.display = 'none';
+    runActions.style.display = 'flex';
+    renderRunningStatus(machineStatus, isPaused, isFinished, isError);
+    renderRunActions(machineStatus, isPaused, isFinished, isError);
+  } else {
+    statusCard.style.display = 'none';
+    runActions.style.display = 'none';
+    idleHero.style.display = 'block';
+    progSection.style.display = 'block';
+  }
+}
+
+function renderRunningStatus(st, paused, finished, error) {
+  const ph = st.phase?.[0] ?? 0;
+  const remaining = st.remaining_time_s;
+  const prnm = st.program_number;
+  const prog = programmes.find(p => p.selector_position_PrNm === prnm);
+  const progName = prog?.name_en || `Programme ${prnm}`;
+
+  // Time
+  const timeEl = document.getElementById('ringTime');
+  const labelEl = document.getElementById('ringLabel');
+  if (finished) {
+    timeEl.textContent = '✓';
+    labelEl.textContent = 'Finished';
+  } else if (error) {
+    timeEl.textContent = '!';
+    labelEl.textContent = `Error ${st.error_code || ''}`;
+  } else if (remaining != null && remaining > 0) {
+    const h = Math.floor(remaining / 3600);
+    const m = Math.floor((remaining % 3600) / 60);
+    timeEl.textContent = h > 0 ? `${h}:${String(m).padStart(2,'0')}` : `${m} min`;
+    labelEl.textContent = paused ? 'Paused' : (PHASE_NAMES[ph] || 'Working');
+  } else {
+    timeEl.textContent = '--:--';
+    labelEl.textContent = paused ? 'Paused' : (PHASE_NAMES[ph] || 'Working');
+  }
+
+  // Ring progress
+  const ring = document.getElementById('ringProgress');
+  const circ = 2 * Math.PI * 82;
+  ring.className = 'progress' + (ph === 6 ? ' drying' : '') + (paused ? ' paused' : '');
+  if (finished) {
+    ring.style.strokeDashoffset = '0';
+  } else if (remaining != null && prog?.default_duration_min) {
+    const total = prog.default_duration_min * 60;
+    const pct = Math.max(0, Math.min(1, 1 - remaining / total));
+    ring.style.strokeDashoffset = String(circ * (1 - pct));
+  } else {
+    ring.style.strokeDashoffset = String(circ * 0.75);
+  }
+
+  document.getElementById('statusProgName').textContent = progName;
+
+  // Pills
+  const pills = document.getElementById('statusPills');
+  let html = '';
+  if (paused) html += '<span class="pill amber">Paused</span>';
+  else if (finished) html += '<span class="pill green">Finished</span>';
+  else if (error) html += '<span class="pill red">Error</span>';
+  else html += `<span class="pill blue">${PHASE_NAMES[ph] || 'Running'}</span>`;
+  if (st.remote_control_enabled) html += '<span class="pill green">Remote OK</span>';
+  if (st.steam && st.steam > 0) html += '<span class="pill blue">Steam</span>';
+  if (st.dry_type && st.dry_type > 0) html += `<span class="pill amber">Dry: ${dryName(st.dry_type)}</span>`;
+  if (st.options?.length) html += st.options.map(o => `<span class="pill blue">${o}</span>`).join('');
+  pills.innerHTML = html;
+
+  // Details
+  const detail = document.getElementById('statusDetail');
+  let dhtml = '';
+  if (st.temperature_C != null) dhtml += `<div class="detail-item"><div class="detail-val">${st.temperature_C}°</div><div class="detail-label">Temp</div></div>`;
+  if (st.spin_rpm != null) dhtml += `<div class="detail-item"><div class="detail-val">${st.spin_rpm}</div><div class="detail-label">Spin RPM</div></div>`;
+  if (st.soil_level != null && st.soil_level > 0) dhtml += `<div class="detail-item"><div class="detail-val">${['—','Light','Med','Heavy'][st.soil_level]||st.soil_level}</div><div class="detail-label">Soil</div></div>`;
+  detail.innerHTML = dhtml;
+}
+
+function renderRunActions(st, paused, finished, error) {
+  const bar = document.getElementById('runActions');
+  const prnm = st.program_number;
+  let html = '';
+  if (finished || error) {
+    html = `<button class="btn btn-primary" onclick="resetToIdle()">New Cycle</button>`;
+    html += `<button class="btn btn-outline" onclick="pollStatus()">Refresh</button>`;
+  } else if (paused) {
+    html = `<button class="btn btn-primary" onclick="doResume()">Resume</button>`;
+    html += `<button class="btn btn-danger" onclick="doStop(${prnm})">Stop</button>`;
+  } else {
+    if (config.protocol !== 'dual') {
+      html += `<button class="btn btn-amber" onclick="doPause()">Pause</button>`;
+    }
+    html += `<button class="btn btn-danger" onclick="doStop(${prnm})">Stop</button>`;
+  }
+  bar.innerHTML = html;
+}
+
+/* ---- Actions ---- */
+async function doPause() {
+  try { await api('/api/pause', {method:'POST'}); toast('Paused'); setTimeout(pollStatus, 2000); } catch(e) { showError(e.message); }
+}
+async function doResume() {
+  try { await api('/api/resume', {method:'POST'}); toast('Resumed'); setTimeout(pollStatus, 2000); } catch(e) { showError(e.message); }
+}
+async function doStop(prnm) {
+  if (!confirm('Stop the current cycle?')) return;
+  try { await api(`/api/stop?prnm=${prnm}`, {method:'POST'}); toast('Stopped'); setTimeout(pollStatus, 3000); } catch(e) { showError(e.message); }
+}
+let dismissedFinished = false;
+function resetToIdle() {
+  dismissedFinished = true;
+  document.getElementById('statusCard').style.display = 'none';
+  document.getElementById('runActions').style.display = 'none';
+  document.getElementById('idleHero').style.display = 'block';
+  document.getElementById('progSection').style.display = 'block';
+  isActive = false;
+  machineStatus = null;
+}
+
+/* ---- Programme loading ---- */
+async function loadProgrammes() {
+  try {
+    const data = await api('/api/programmes');
+    programmes = data.programmes || [];
+    programmesMeta = data;
+    renderProgrammes();
+  } catch (e) { console.error('Failed to load programmes', e); }
+}
+
+function progIcon(p) {
+  const fam = p.family || '';
+  const type = (p.raw_parameters?.program_type || 'W').toUpperCase();
+  const dtype = p.drying_type;
+  if (type === 'D' || (fam === 'dry')) return { cls: 'dry', icon: '🔥' };
+  if (dtype && dtype !== 'null' && dtype !== '' && p.dry_raw !== 0 && type !== 'W') return { cls: 'wd', icon: '💧' };
+  if (p.name_en?.toLowerCase().includes('dry') && !p.name_en?.toLowerCase().includes('wash')) return { cls: 'dry', icon: '🔥' };
+  if (p.name_en?.toLowerCase().includes('drain') || p.name_en?.toLowerCase().includes('rinse') || p.name_en?.toLowerCase().includes('clean')) return { cls: 'util', icon: '🔄' };
+  return { cls: 'wash', icon: '💧' };
+}
+
+function categorizeProg(p) {
+  const name = (p.name_en || '').toLowerCase();
+  const type = (p.raw_parameters?.program_type || 'W').toUpperCase();
+  if (name.includes('auto-clean') || name.includes('rinse') || name.includes('drain') || name.includes('refresh')) return 'Utility';
+  if (type === 'D' || (name.includes('dry') && !name.includes('wash'))) return 'Dry';
+  if (name.includes('wash') && name.includes('dry')) return 'Wash + Dry';
+  return 'Wash';
+}
+
+function renderProgrammes() {
+  const grid = document.getElementById('progGrid');
+  const seen = new Set();
+  const groups = {};
+  const order = ['Wash', 'Wash + Dry', 'Dry', 'Utility'];
+  for (const p of programmes) {
+    const key = p.selector_position_PrNm + '_' + (p.program_code_PrCode || 0);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const cat = categorizeProg(p);
+    (groups[cat] ??= []).push(p);
+  }
+  let html = '';
+  for (const cat of order) {
+    const progs = groups[cat];
+    if (!progs?.length) continue;
+    html += `<div class="prog-group-label">${cat}</div>`;
+    for (const p of progs) {
+      const ic = progIcon(p);
+      const tempStr = p.temperature_C?.default != null ? `${p.temperature_C.default}°` : '';
+      const durStr = p.default_duration_min ? `${p.default_duration_min}m` : '';
+      const extras = [];
+      if (p.steam_raw > 0 && p.steam_raw !== 255) extras.push('Steam');
+      if (p.dry_raw === 255 || (p.dry_raw > 0 && p.dry_raw !== 0)) extras.push('Dry');
+      const selId = `prog_${p.selector_position_PrNm}_${p.program_code_PrCode}`;
+      html += `<div class="prog-item" data-prnm="${p.selector_position_PrNm}" data-prcode="${p.program_code_PrCode}" id="${selId}" onclick="selectProg(${p.selector_position_PrNm}, ${p.program_code_PrCode})">
+        <div class="prog-icon ${ic.cls}">${ic.icon}</div>
+        <div class="prog-info">
+          <div class="prog-name">${p.name_en}</div>
+          <div class="prog-meta">
+            ${tempStr ? `<span>${tempStr}</span>` : ''}
+            ${durStr ? `<span>${durStr}</span>` : ''}
+            ${extras.map(e => `<span class="prog-badge">${e}</span>`).join('')}
+          </div>
+        </div>
+      </div>`;
+    }
+  }
+  grid.innerHTML = html;
+}
+
+/* ---- Programme selection & settings ---- */
+function selectProg(prnm, prcode) {
+  const prog = programmes.find(p => p.selector_position_PrNm === prnm && p.program_code_PrCode === prcode);
+  if (!prog) return;
+  selectedProg = prog;
+
+  document.querySelectorAll('.prog-item').forEach(el => el.classList.remove('selected'));
+  const selEl = document.getElementById(`prog_${prnm}_${prcode}`);
+  if (selEl) selEl.classList.add('selected');
+
+  const isDryProg = prog.family === 'dry';
+  settings = {
+    temp: prog.temperature_C?.default ?? null,
+    spin: prog.spin_rpm?.default ?? null,
+    soil: prog.soil_level?.default ?? 0,
+    dry: isDryProg ? (prog.dry_raw === 255 ? 3 : (prog.dry_raw || 0)) : 0,
+    steam: 0,
+    optmsk1: 0,
+    optmsk2: 0,
+    delay: 0,
+  };
+
+  renderSettings(prog);
+  document.getElementById('settingsCard').style.display = 'block';
+  document.getElementById('startBar').style.display = 'flex';
+  updateFavButton();
+  document.getElementById('settingsCard').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function renderSettings(prog) {
+  const panel = document.getElementById('settingsPanel');
+  let html = '';
+
+  // Temperature
+  const tmin = 20;
+  const tmax = prog.temperature_C?.max;
+  const tdef = prog.temperature_C?.default;
+  if (tdef != null && tmax != null && tdef !== 255 && tmax !== 255) {
+    const temps = [];
+    for (let t = tmin; t <= tmax; t += 10) temps.push(t);
+    if (temps.length > 1 || (temps.length === 1 && temps[0] !== tdef)) {
+      html += `<div class="setting-row"><span class="setting-label">Temperature</span><div class="setting-control" id="tempChips">`;
+      for (const t of temps) {
+        html += `<div class="chip ${t === settings.temp ? 'active' : ''}" onclick="setSetting('temp',${t})">${t}°</div>`;
+      }
+      html += `</div></div>`;
+    }
+  }
+
+  // Spin speed
+  const spinMax = prog.spin_rpm?.max;
+  const spinDef = prog.spin_rpm?.default;
+  if (spinDef != null && spinMax != null && spinMax !== 255) {
+    const spins = [];
+    for (let s = 400; s <= spinMax; s += 200) spins.push(s);
+    if (!spins.includes(spinMax)) spins.push(spinMax);
+    if (spins.length > 1) {
+      html += `<div class="setting-row"><span class="setting-label">Spin</span><div class="setting-control">`;
+      for (const s of spins) {
+        html += `<div class="chip ${s === settings.spin ? 'active' : ''}" onclick="setSetting('spin',${s})">${s}</div>`;
+      }
+      html += `</div></div>`;
+    }
+  }
+
+  // Soil level
+  const soilMin = prog.soil_level?.min ?? 0;
+  const soilMax = prog.soil_level?.max ?? 0;
+  if (soilMax > soilMin) {
+    const soilNames = ['—','Light','Medium','Heavy'];
+    html += `<div class="setting-row"><span class="setting-label">Intensity</span><div class="setting-control">`;
+    for (let s = Math.max(1, soilMin); s <= soilMax; s++) {
+      html += `<div class="chip ${s === settings.soil ? 'active' : ''}" onclick="setSetting('soil',${s})">${soilNames[s]||s}</div>`;
+    }
+    html += `</div></div>`;
+  }
+
+  // Drying
+  if (prog.dry_raw === 255 || prog.dry_raw > 0) {
+    const isDry = prog.family === 'dry';
+    const sensorOpts = [{v:1,n:dryName(1)},{v:2,n:dryName(2)},{v:3,n:dryName(3)}];
+    const timedOpts = [{v:5,n:'120 min'},{v:6,n:'90 min'},{v:7,n:'60 min'},{v:8,n:'30 min'}];
+    const allDryOpts = [...sensorOpts, ...timedOpts, {v:9,n:'Wool'}];
+    let dryOpts;
+    if (prog.dry_raw === 255) {
+      dryOpts = isDry ? [...sensorOpts, ...timedOpts] : [{v:0,n:'None'}, ...allDryOpts];
+    } else if (prog.dry_raw === 9) {
+      dryOpts = isDry ? [{v:9,n:'Wool Dry'}] : [{v:0,n:'None'},{v:9,n:'Wool Dry'}];
+    } else {
+      dryOpts = isDry ? [{v:prog.dry_raw, n:dryName(prog.dry_raw)}]
+                      : [{v:0,n:'None'},{v:prog.dry_raw, n:dryName(prog.dry_raw)}];
+    }
+    if (dryOpts.length > 1) {
+      html += `<div class="setting-row"><span class="setting-label">Drying</span><div class="setting-control">`;
+      for (const d of dryOpts) {
+        html += `<div class="chip ${d.v === settings.dry ? 'active' : ''}" onclick="setSetting('dry',${d.v})">${d.n}</div>`;
+      }
+      html += `</div></div>`;
+    }
+  }
+
+  // Steam
+  if (prog.steam_raw === 5) {
+    html += `<div class="setting-row"><span class="setting-label">Steam</span>
+      <div class="toggle ${settings.steam ? 'on' : ''}" onclick="setSetting('steam', settings.steam ? 0 : 5)"></div></div>`;
+  } else if (prog.steam_raw === 4) {
+    html += `<div class="setting-row"><span class="setting-label">Steam</span><div class="setting-control">`;
+    html += `<div class="chip ${settings.steam===0?'active':''}" onclick="setSetting('steam',0)">Off</div>`;
+    for (let s = 1; s <= 3; s++) {
+      html += `<div class="chip ${settings.steam===s?'active':''}" onclick="setSetting('steam',${s})">${STEAM_NAMES[s]}</div>`;
+    }
+    html += `</div></div>`;
+  }
+
+  // Options
+  const availOpts = prog.available_options_raw;
+  if (availOpts > 0 && availOpts !== 255) {
+    const bits = OPT_BITS.filter(b => availOpts & b);
+    if (bits.length > 0) {
+      html += `<div><div class="setting-label" style="margin-bottom:6px">Options</div><div class="option-chips">`;
+      for (const b of bits) {
+        const active = settings.optmsk1 & b;
+        html += `<div class="opt-chip ${active ? 'active' : ''}" onclick="toggleOpt(${b})">${OPT_NAMES[b]}</div>`;
+      }
+      html += `</div></div>`;
+    }
+  }
+
+  // Zoom (OptMsk2 bit 1)
+  if ((prog.available_options2_raw & 1)) {
+    html += `<div class="setting-row"><span class="setting-label">Zoom (shorter)</span>
+      <div class="toggle ${settings.optmsk2 & 1 ? 'on' : ''}" onclick="toggleOpt2(1)"></div></div>`;
+  }
+
+  // Delay
+  html += `<div class="setting-row"><span class="setting-label">Delay start</span>
+    <div class="delay-picker">
+      <button onclick="adjDelay(-1)">−</button>
+      <span class="delay-val" id="delayVal">${formatDelay(settings.delay)}</span>
+      <button onclick="adjDelay(1)">+</button>
+    </div></div>`;
+
+  panel.innerHTML = html;
+}
+
+function setSetting(key, val) {
+  settings[key] = val;
+  if (selectedProg) renderSettings(selectedProg);
+  updateFavButton();
+}
+
+function toggleOpt(bit) {
+  if (RINSE_BITS.includes(bit)) {
+    if (settings.optmsk1 & bit) {
+      settings.optmsk1 &= ~bit;
+    } else {
+      for (const rb of RINSE_BITS) settings.optmsk1 &= ~rb;
+      settings.optmsk1 |= bit;
+    }
+  } else {
+    settings.optmsk1 ^= bit;
+  }
+  if (selectedProg) renderSettings(selectedProg);
+  updateFavButton();
+}
+
+function toggleOpt2(bit) {
+  settings.optmsk2 ^= bit;
+  if (settings.optmsk2 & 1) settings.optmsk1 = 0;
+  if (selectedProg) renderSettings(selectedProg);
+  updateFavButton();
+}
+
+function adjDelay(dir) {
+  settings.delay = Math.max(0, Math.min(48, settings.delay + dir));
+  const el = document.getElementById('delayVal');
+  if (el) el.textContent = formatDelay(settings.delay);
+}
+
+function formatDelay(steps) {
+  if (steps === 0) return 'None';
+  const mins = steps * 30;
+  if (mins < 60) return `${mins}m`;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return m ? `${h}h ${m}m` : `${h}h`;
+}
+
+/* ---- Start ---- */
+async function doStart() {
+  if (!selectedProg) return;
+  const p = selectedProg;
+  const btn = document.getElementById('btnStart');
+  btn.disabled = true;
+  btn.textContent = 'Starting...';
+
+  try {
+    if (config.protocol === 'dual') {
+      await api('/api/dual-start', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({
+          prnm: p.selector_position_PrNm,
+          prcode: p.program_code_PrCode,
+          default_temp: p.temperature_C?.default ?? 0,
+          default_spin_rpm: p.spin_rpm?.default ?? 0,
+          default_soil: (p.soil_level?.default === 9 ? p.soil_level?.min : p.soil_level?.default) ?? 0,
+          temp: settings.temp,
+          spin_rpm: settings.spin,
+          soil: settings.soil ?? null,
+          optmsk: settings.optmsk1,
+          steam: settings.steam,
+          dry: settings.dry ?? 0,
+          delay_steps: settings.delay,
+          dry_only: p.family === 'dry',
+        })
+      });
+    } else {
+      await api('/api/start', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({
+          prnm: p.selector_position_PrNm,
+          prcode: p.program_code_PrCode,
+          prstr: p.name_en || 'Program',
+          temp: settings.temp,
+          soil: settings.soil || 0,
+          spin_rpm: settings.spin,
+          optmsk1: settings.optmsk1,
+          optmsk2: settings.optmsk2,
+          steam: settings.steam,
+          dry: settings.dry || 0,
+          delay_steps: settings.delay,
+        })
+      });
+    }
+    toast('Started!');
+    selectedProg = null;
+    setTimeout(pollStatus, 3000);
+  } catch (e) {
+    showError(e.message);
+  }
+  btn.disabled = false;
+  btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"/></svg> Start';
+}
+
+/* ---- Favourites ---- */
+async function loadFavourites() {
+  try {
+    favourites = await api('/api/favourites');
+    renderFavourites();
+  } catch { favourites = []; }
+}
+
+function renderFavourites() {
+  const card = document.getElementById('favCard');
+  const list = document.getElementById('favList');
+  if (!favourites.length) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+  let html = '';
+  for (const fav of favourites) {
+    const prog = programmes.find(p => p.selector_position_PrNm === fav.prnm && p.program_code_PrCode === fav.prcode);
+    const ic = prog ? progIcon(prog) : { cls: 'wash', icon: '⭐' };
+    const s = fav.settings || {};
+    const tags = [];
+    if (s.temp) tags.push(`${s.temp}°`);
+    if (s.spin) tags.push(`${s.spin} rpm`);
+    if (s.dry > 0) tags.push(dryName(s.dry));
+    html += `<div class="fav-item" onclick="startFavourite('${fav.id}')">
+      <div class="fav-icon">${ic.icon}</div>
+      <div class="fav-info">
+        <div class="fav-name">${fav.name}</div>
+        <div class="fav-meta">${tags.join(' · ') || 'Default settings'}</div>
+      </div>
+      <button class="fav-remove" onclick="event.stopPropagation();removeFavourite('${fav.id}')" title="Remove">
+        <svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
+      </button>
+    </div>`;
+  }
+  list.innerHTML = html;
+}
+
+function startFavourite(id) {
+  const fav = favourites.find(f => f.id === id);
+  if (!fav) return;
+  const prog = programmes.find(p => p.selector_position_PrNm === fav.prnm && p.program_code_PrCode === fav.prcode);
+  if (!prog) { showError('Programme no longer available'); return; }
+  selectProg(fav.prnm, fav.prcode);
+  Object.assign(settings, fav.settings);
+  renderSettings(prog);
+  updateFavButton();
+}
+
+async function toggleFavourite() {
+  if (!selectedProg) return;
+  const p = selectedProg;
+  const existing = favourites.find(f => f.prnm === p.selector_position_PrNm && f.prcode === p.program_code_PrCode
+    && JSON.stringify(f.settings) === JSON.stringify(currentSettingsSnapshot()));
+  if (existing) {
+    await removeFavourite(existing.id);
+    return;
+  }
+  const name = prompt('Name this favourite:', p.name_en);
+  if (!name) return;
+  try {
+    const fav = await api('/api/favourites', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ name, prnm: p.selector_position_PrNm, prcode: p.program_code_PrCode, settings: currentSettingsSnapshot() })
+    });
+    favourites.unshift(fav);
+    renderFavourites();
+    updateFavButton();
+    toast('Saved to favourites');
+  } catch (e) { showError(e.message); }
+}
+
+async function removeFavourite(id) {
+  try {
+    await api(`/api/favourites/${id}`, { method: 'DELETE' });
+    favourites = favourites.filter(f => f.id !== id);
+    renderFavourites();
+    updateFavButton();
+    toast('Removed from favourites');
+  } catch (e) { showError(e.message); }
+}
+
+function currentSettingsSnapshot() {
+  return {
+    temp: settings.temp,
+    spin: settings.spin,
+    soil: settings.soil,
+    dry: settings.dry,
+    steam: settings.steam,
+    optmsk1: settings.optmsk1,
+    optmsk2: settings.optmsk2,
+    delay: settings.delay,
+  };
+}
+
+function updateFavButton() {
+  const btn = document.getElementById('btnFav');
+  if (!btn || !selectedProg) return;
+  const p = selectedProg;
+  const snap = JSON.stringify(currentSettingsSnapshot());
+  const isSaved = favourites.some(f => f.prnm === p.selector_position_PrNm && f.prcode === p.program_code_PrCode
+    && JSON.stringify(f.settings) === snap);
+  btn.classList.toggle('saved', isSaved);
+  const svg = btn.querySelector('svg');
+  if (svg) svg.setAttribute('fill', isSaved ? 'currentColor' : 'none');
+}
+
+/* ---- Init ---- */
+async function init() {
+  await loadConfig();
+  if (!config.ip || !config.key) {
+    document.getElementById('notConfigured').style.display = 'block';
+    document.getElementById('idleHero').style.display = 'none';
+    document.getElementById('progSection').style.display = 'none';
+    updateConnDot(false);
+    return;
+  }
+  document.getElementById('notConfigured').style.display = 'none';
+  document.getElementById('idleHero').style.display = 'block';
+  document.getElementById('progSection').style.display = 'block';
+  await loadProgrammes();
+  await loadFavourites();
+  startPolling();
+}
+
+document.getElementById('btnConfig').onclick = () => showView('config');
+document.getElementById('btnRefresh').onclick = () => pollStatus();
+
+init();
+</script>
+</body>
+</html>

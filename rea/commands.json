@@ -1,0 +1,214 @@
+{
+  "_about": "Writable parameters for Candy Simply-Fi washers / washer-dryers, recovered statically from candy_simplify.apk (it.candy.simplyfi 3.14.1, versionCode 226). Every request goes to GET http://<appliance-ip>/http-write.json. See FINDINGS.md for evidence and the encryption scheme.",
+  "_protocols": {
+    "wifible": {
+      "applies_to": "configured_appliances.connectivity == 'wifible' and type washer / washer_dryer (CandyApplianceFactory -> washer.axibianca.model.Washer / WasherDryer). Interface types: bianca, red_devil_*, RAPIDO*, XCARE*, HWASH300*, SMARTPRO*, HWASH700.",
+      "builder": "it.candyhoover.core.washer.axibianca.model.command.Command.getParameterString / getParametersMap (enum Command.Param)",
+      "confidence": "high"
+    },
+    "dual": {
+      "applies_to": "connectivity contains 'dual' (Wi-Fi + NFC 'DualTech'), type washer / washer_dryer (CandyWasherDualTech / CandyWasherDryerDualTech). Interface types such as 3D_DUAL, 4D.",
+      "builder": "it.candyhoover.core.models.commands.CandyWasherDTCommand.getParameterString -> CandyWasherCommand.getParameterString",
+      "confidence": "high"
+    },
+    "how_to_tell_which": "The app learns connectivity/interface_type from the cloud appliance record (appliances.json: 'connectivity', 'interface_type'). Without the cloud, guess from the model or try a read: both use the same http-read.json. Treat as an open question (see FINDINGS.md)."
+  },
+
+  "parameters": [
+    {
+      "name": "Write", "protocols": ["wifible", "dual"], "values": {"1": "this is a write request"},
+      "note": "Always the first token of the plaintext command string. wifible getParametersMap() (used only when encryption is off) omits it for start commands.",
+      "evidence": "Command.getParameterString: new StringBuilder(\"Write=1\"); CandyWasherCommand: \"Write=1&Pa=0&Sel=%i&PrNm=%@\"", "confidence": "high"
+    },
+    {
+      "name": "StSt", "protocols": ["wifible", "dual"], "meaning": "start/stop",
+      "values": {"1": "start (wifible sends 1 even for delayed start)", "0": "stop / cancel"},
+      "evidence": "Command.Param.START(\"StSt\"); StopCommand adds StSt=0; CandyWasherCommand '&StSt=1' when delay==0", "confidence": "high"
+    },
+    {
+      "name": "PrNm", "protocols": ["wifible", "dual"], "meaning": "programme number = knob/selector position (programme parameter selector_position)",
+      "values": "integer from the programme table (see programmes.json selector_position_PrNm). 0 = OFF.",
+      "evidence": "Command.Param.PROGRAM_NUMBER(\"PrNm\") = selectorPosition", "confidence": "high"
+    },
+    {
+      "name": "PrCode", "protocols": ["wifible"], "meaning": "programme code (programme parameter pr_code); disambiguates programmes sharing one PrNm",
+      "values": "integer from the programme table (programmes.json program_code_PrCode)",
+      "evidence": "Command.Param.PROGRAM_CODE(\"PrCode\") = mProgram.programCode; CandyWasherProgram.applyParameters 'pr_code'", "confidence": "high"
+    },
+    {
+      "name": "PrStr", "protocols": ["wifible"], "meaning": "programme name shown on the appliance display (localised to Lang)",
+      "values": "text; certain characters replaced by StringsHelper.encodeForAppliance (e.g. '°' -> '%28', ',' -> '%2C', Greek/Cyrillic -> %80..%FF codes) when on the local network",
+      "evidence": "Command.Param.PROGRAM_NAME(\"PrStr\"); washer.axibianca.helper.StringsHelper.encodeForAppliance", "confidence": "high (meaning of display usage inferred, medium)"
+    },
+    {
+      "name": "TmpTgt", "protocols": ["wifible", "dual"], "meaning": "target wash temperature, degrees C",
+      "values": "programme-specific; 0..maximum_temperature (bundled tables use 20/30/40/60/90). Omitted on wifible when temperature is -1 (programme default 255 = not applicable).",
+      "dual_rule": "dual sends TmpTgt only when it differs from the programme default, and then also TmpDf=<default>",
+      "evidence": "Command.Param.TEMPERATURE(\"TmpTgt\"); CandyWasherCommand '&TmpTgt=%@&TmpDf=%@'", "confidence": "high"
+    },
+    {
+      "name": "TmpDf", "protocols": ["dual"], "meaning": "programme default temperature, sent alongside TmpTgt",
+      "evidence": "CandyWasherCommand.getParameterString", "confidence": "high"
+    },
+    {
+      "name": "SLevTgt", "protocols": ["wifible", "dual"], "meaning": "soil level / intensity",
+      "values": {"0": "not applicable (wifible sends 0 when level is 255)", "1": "light / short", "2": "medium", "3": "heavy / long"},
+      "notes": "Programme default 9 means 'use minimum_soil_level'. App forces soil 2 when temperature is 90 and soil 1 (dual). Some programmes share a PrNm and differ only by soil level (e.g. Saving 14'/30'/44').",
+      "evidence": "Command.Param.SOIL_LEVEL(\"SLevTgt\"), Command.soilParam(); CandyWasherCommand soil rules", "confidence": "high for encoding; level names inferred from assisted-wash assets (BREVE=1), medium"
+    },
+    {
+      "name": "SpdTgt", "protocols": ["wifible", "dual"], "meaning": "spin speed in hundreds of rpm",
+      "values": "rpm/100, e.g. 4 = 400 rpm, 10 = 1000 rpm, 14 = 1400 rpm. Omitted on wifible when 255 (not applicable). 0 = no spin (inferred).",
+      "dual_rule": "sent only when different from programme default, together with SpdDef=<default/100>",
+      "evidence": "Command.speedParam(): spinSpeed/100; CandyWasherCommand '&SpdTgt=%@&SpdDef=%@'", "confidence": "high"
+    },
+    {
+      "name": "SpdDef", "protocols": ["dual"], "meaning": "programme default spin/100 sent with SpdTgt",
+      "evidence": "CandyWasherCommand.getParameterString", "confidence": "high"
+    },
+    {
+      "name": "OptMsk1", "protocols": ["wifible"], "meaning": "option bitmask",
+      "bits": {"1": "prewash", "2": "hygiene", "4": "anti-crease", "8": "good night (quiet, pauses before final spin)", "16": "extra rinse +1", "32": "extra rinse +2", "64": "extra rinse +3", "128": "aquaplus"},
+      "constraints": "only bits allowed by the programme's available_options; rinse bits 16/32/64 are mutually exclusive (exclusion mask 112); zoom forces OptMsk1=0",
+      "evidence": "Command.Param.OPTION_MASK_1(\"OptMsk1\"); Washer.getOptions bitmasks; CandyWasher.Washer3DOption* constants", "confidence": "high"
+    },
+    {
+      "name": "OptMsk2", "protocols": ["wifible"], "meaning": "second option bitmask",
+      "bits": {"1": "zoom (shortened cycle); only when programme available_options2 & 1"},
+      "evidence": "Command.Param.OPTION_MASK_2(\"OptMsk2\"); Command.setZoom; CandyWasher.WasherOption2Zoom=1", "confidence": "high"
+    },
+    {
+      "name": "OptMsk", "protocols": ["dual"], "meaning": "option bitmask (same bit meanings as OptMsk1; 128=aquaplus only on 3D/4D interfaces)",
+      "notes": "App quirk: on interface 3d_dual with brand==1 an OptMsk of 16 is rewritten to 128 ('pinkRule').",
+      "evidence": "CandyWasherCommand.appendOptionMask '&OptMsk=%@'; CandyWasherDualTech.getOptions/getAvailableOptions; CandyWasherDTCommand pinkRuleApplied", "confidence": "high"
+    },
+    {
+      "name": "DelVl", "protocols": ["wifible", "dual"], "meaning": "delayed start / delayed end",
+      "values": "integer number of 30-minute steps, 0..48 (0 = start now). wifible: StSt=1&DelVl=n. dual: DelMd=1&DelVl=n replaces StSt=1. Stop of a delayed cycle sends DelVl=0 (wifible) / DelMd=0 (dual).",
+      "evidence": "Command.Param.DELAY(\"DelVl\"); AbMaterialTimePicker steps mDelay by 1 per 30 min (max 48); AbDelayStartFragment.saveEndExit adds offsetHours*2; CandyWasherCommand '&DelMd=1&DelVl=%@'",
+      "confidence": "medium (unit inferred from picker; status DelVal is displayed as minutes, see FINDINGS open questions)"
+    },
+    {
+      "name": "DelMd", "protocols": ["dual"], "meaning": "delay mode", "values": {"1": "delayed start armed", "0": "no delay / cancel"},
+      "evidence": "CandyWasherCommand.getParameterString, stopAsGETString", "confidence": "high"
+    },
+    {
+      "name": "Stm", "protocols": ["wifible", "dual"], "meaning": "steam",
+      "values": {"0": "no steam", "1": "steam cotton", "2": "steam mixed", "3": "steam refresh", "5": "steam on (programmes with steam=5 on/off toggle)"},
+      "notes": "Which values a programme accepts depends on its 'steam' parameter: 5 = on/off toggle, 4 = user picks 1/2/3, 1..3 = fixed, 255 = steam-only programme.",
+      "evidence": "Command.Param.STEAM(\"Stm\"); Program.BIANCA_STEAM_LABEL_TO_VALUE_MAP; Program.canSetOnOffSteam/canSetSteamLevel; CandyWasherDTCommand '&Stm='", "confidence": "high"
+    },
+    {
+      "name": "Dry", "protocols": ["wifible"], "meaning": "drying after wash (washer-dryers; plain washers always send 0)",
+      "values": {"0": "no drying", "1": "extra dry", "2": "iron dry", "3": "cupboard dry", "5": "timed 120 min", "6": "timed 90 min", "7": "timed 60 min", "8": "timed 30 min", "9": "wool dry"},
+      "notes": "Programme 'dry' parameter: 0 = no drying allowed, 255 = user may pick, 1..9 = fixed value. Dry-only programmes default to Dry=1. Chatbot maps steam to 22 internally but then converts it to Stm (never sent as Dry).",
+      "evidence": "Command.Param.DRY(\"Dry\"); Program.BIANCA_DRY_LABEL_TO_VALUE_MAP; WasherDryer.supportsDry()=true; AIDryerType.getValue (extra=1, iron=2, wardrobe=3)", "confidence": "high"
+    },
+    {
+      "name": "Option", "protocols": ["dual"], "meaning": "drying level for DualTech washer-dryers (equivalent of Dry)",
+      "values": {"0": "no drying", "1": "extra dry", "2": "cupboard/wardrobe dry (ARMADIO)", "3": "iron dry (STIRO)", "4": "cooldown", "5": "timed 120", "6": "timed 90", "7": "timed 60", "8": "timed 30", "9": "wool dry"},
+      "warning": "Values 2 and 3 are SWAPPED compared with wifible 'Dry'. Evidence is consistent inside each code path; verify on your machine.",
+      "evidence": "CandyWasherDTCommand: '&Option=' + dry only for CandyWasherDryerDualTech; CandyWasherDryerDualTech.dryWithValue label array and dryValuesWithKey (ARMADIO->'2', STIRO->'3')", "confidence": "medium"
+    },
+    {
+      "name": "Lang", "protocols": ["wifible"], "meaning": "appliance display language index",
+      "values": "per assets/language_mapping/languages.json, e.g. bianca: it=0, en=1, fr=2, nl=3, pt=4, es=5, de=6, ru=7 ...; app sends the washer's current Lang from status if supported, else English",
+      "evidence": "Command.Param.LANG(\"Lang\"); Command.languageToUse; LanguageHelper", "confidence": "high"
+    },
+    {
+      "name": "ED", "protocols": ["wifible"], "meaning": "extra detergent dose (auto-dose models, interface name contains '_ad')",
+      "values": {"0": "none / not supported", "1": "extra dose"}, "evidence": "Command.Param.EXTRA_DOSE(\"ED\"); Program.BIANCA_EXTRADOSE_*; Washer.supportsAutodose", "confidence": "medium"
+    },
+    {
+      "name": "RecipeId", "protocols": ["wifible", "dual"], "meaning": "identifies a downloadable (app-only) programme",
+      "values": {"0": "normal knob programme", "D_<position>": "downloadable programme, e.g. D_80 (dt_down_prog_position)"},
+      "evidence": "Command.Param.RECIPE_ID; Command.setProgram recipeId = \"D_\" + p.position; Washer.loadDownloadableProgramsFromDB", "confidence": "high"
+    },
+    {
+      "name": "StartCheckUp", "protocols": ["wifible"], "meaning": "self check-up flag inside a start command (0 normally); standalone 'StartCheckUp=1' starts check-up on HWASH700",
+      "evidence": "Command.Param.START_CHECKUP; CheckupCommand", "confidence": "high"
+    },
+    {
+      "name": "CheckUpState", "protocols": ["wifible", "dual"], "meaning": "start appliance self check-up", "values": {"1": "start check-up", "0": "normal"},
+      "evidence": "CheckupCommand 'CheckUpState=1'; CandyWasherDTCommand '&CheckUpState='", "confidence": "high"
+    },
+    {
+      "name": "DispTestOn", "protocols": ["wifible"], "meaning": "always sent as 1 in start commands; purpose unknown (status has DisTestOn/DisTestRes for self check-up)",
+      "evidence": "Command.Param.DISPLAY_TEST(\"DispTestOn\") hard-coded 1", "confidence": "low (meaning)"
+    },
+    {
+      "name": "Pa", "protocols": ["wifible", "dual"], "meaning": "pause",
+      "values": {"1": "pause", "0": "resume / not paused"},
+      "notes": "wifible pause/resume is a standalone command (AxiPauseWasherCommand), not offered on BIANCA interfaces (Washer.supportsPause). dual only ever sends Pa=0 inside start commands; the app has no dual pause button.",
+      "evidence": "Command.Param.PAUSE(\"Pa\"); AxiPauseWasherCommand; AbWasherHomeActivity.togglePause/resumePause; CandyWasherCommand 'Write=1&Pa=0&Sel=...'", "confidence": "high"
+    },
+    {
+      "name": "Sel", "protocols": ["dual"], "meaning": "always 0 in start commands; Sel=1 used in the 'reset' command after a finished cycle",
+      "evidence": "CandyWasherCommand.getParameterString / resetAsGETString", "confidence": "medium (meaning inferred)"
+    },
+    {
+      "name": "RestartGN", "protocols": ["wifible"], "meaning": "resume after 'good night' pause (finish the cycle)", "values": {"1": "restart"},
+      "evidence": "ResetGoodNightCommand 'Write=1&RestartGN=1'; status PrPh 9 = good-night pause", "confidence": "medium"
+    },
+    {
+      "name": "SetDet", "protocols": ["wifible"], "meaning": "auto-dose detergent on/off", "values": {"0": "off", "1": "on"},
+      "evidence": "AxiAutodoseWasherCommand", "confidence": "high"
+    },
+    {
+      "name": "SetSoft", "protocols": ["wifible"], "meaning": "auto-dose softener on/off", "values": {"0": "off", "1": "on"},
+      "evidence": "AxiAutodoseWasherCommand", "confidence": "high"
+    },
+    {
+      "name": "SetHard", "protocols": ["wifible"], "meaning": "water hardness setting", "values": "0..2 (enum ONE/TWO/THREE ordinal) or raw int from settings UI",
+      "evidence": "AxiSetHardnessWasherCommand", "confidence": "medium"
+    },
+    {
+      "name": "GetStat", "protocols": ["wifible"], "meaning": "request usage statistics (via http-write.json)", "values": {"1": "get"},
+      "evidence": "StatisticsService: xorEncrypt(\"GetStat=1\", key)", "confidence": "high"
+    },
+    {
+      "name": "GetP", "protocols": ["wifible"], "meaning": "declared 'PREDICTION' parameter; no sender found", "evidence": "Command.Param.PREDICTION(\"GetP\")", "confidence": "low"
+    },
+    {
+      "name": "NTW_MODE / SSID / PASSWORD / ENCRYPT_KEY", "protocols": ["wifible", "dual"], "endpoint": "http-config.json (pairing only, on the appliance's own access point 192.168.0.1)",
+      "meaning": "Wi-Fi security mode, home SSID (spaces -> '$' on non-Bianca), password, and the new 16-char session key",
+      "evidence": "ConnectionManager.configureAppliance; EnrollmentService", "confidence": "high"
+    }
+  ],
+
+  "names_from_the_brief_that_are_not_write_parameters": {
+    "Temp": "status field (current temperature setting). Write uses TmpTgt.",
+    "SpinSp": "status field (spin; value <100 means hundreds of rpm per CandyWasher.getSpinSpeed). Write uses SpdTgt.",
+    "Opt1..Opt9": "status fields, one per option bit (Opt1 = bit 1 ... Opt8 = bit 128; Opt9+ = second mask). Write uses OptMsk1/OptMsk2 (wifible) or OptMsk (dual).",
+    "DelVal": "status field. Write uses DelVl (and DelMd on dual).",
+    "DryT": "status field (current dry type). Write uses Dry (wifible) or Option (dual).",
+    "Steam": "status field. Write uses Stm.",
+    "DryLev": "not used for washer-dryers at all; only in the tumble-dryer library com.candy.tdlibrary (DryerProgram, ApplianceStatus).",
+    "PrCode": "IS a write parameter on wifible (and also a status field).",
+    "StSt": "IS a write parameter."
+  },
+
+  "sequences": {
+    "wifible_start": {
+      "plaintext_template": "Write=1&StSt=1&DelVl=<n>&PrNm=<sel>&PrCode=<code>&PrStr=<name>&TmpTgt=<C>&SLevTgt=<soil>&SpdTgt=<rpm/100>&OptMsk1=<m1>&OptMsk2=<m2>&Lang=<lang>&Stm=<steam>&Dry=<dry>&ED=<0|1>&RecipeId=<0|D_n>&StartCheckUp=0&DispTestOn=1",
+      "omit_rules": "TmpTgt omitted if temperature==-1; SpdTgt omitted if 255; parameter order exactly as above",
+      "request": "GET http://<ip>/http-write.json?encrypted=1&data=<HEX(XOR(plaintext, key))>",
+      "success": "response body = HEX(XOR('{\"response\":\"success\"...}', key)); app then waits 3 s and polls http-read.json",
+      "evidence": "Command.getParameterString; CommandService.formatLocalCall/start; Washer.sendLocalCommand/onCommandSendSuccessful"
+    },
+    "wifible_pause": {"plaintext": "encrypted=0&Pa=1", "request": "GET http://<ip>/http-write.json?encrypted=1&data=<HEX(XOR('encrypted=0&Pa=1', key))>", "note": "the literal 'encrypted=0&' prefix is inside the encrypted payload (AxiPauseWasherCommand.addFirstParam(ENCRYPTED,0)); unencrypted form is ?encrypted=0&Pa=1"},
+    "wifible_resume": {"plaintext": "encrypted=0&Pa=0", "request": "same as pause with Pa=0"},
+    "wifible_stop": {"plaintext": "Write=1&StSt=0&PrNm=<current PrNm from status>[&DelVl=0 if a delayed start is armed]", "evidence": "StopCommand"},
+    "wifible_after_finish": "ResetCheckupCommand 'Write=1&StSt=0&PrNm=11' is used after a check-up; finished cycles are acknowledged in the UI only",
+    "dual_start": {
+      "plaintext_template": "Write=1&Pa=0&Sel=0&PrNm=<sel>&StSt=1[&TmpTgt=<C>&TmpDf=<def>][&SLevTgt=<soil>][&SpdTgt=<rpm/100>&SpdDef=<def/100>]&OptMsk=<mask>&Stm=<steam>[&Option=<dry> (washer-dryer only)]&RecipeId=<0|D_n>&CheckUpState=0",
+      "delayed": "replace '&StSt=1' with '&DelMd=1&DelVl=<n>'",
+      "dry_only_programme": "CandyWasherCommand returns early after PrNm/StSt + '&OptMsk=' for a CandyWasherDryerProgram whose isDry() is true, then CandyWasherDTCommand appends '&Stm=..&Option=..&RecipeId=..&CheckUpState=0'",
+      "request": "GET http://<ip>/http-write.json?encrypted=1&data=<HEX(XOR(plaintext, key))>",
+      "evidence": "CandyWasherCommand.getParameterString; CandyWasherDTCommand.getParameterString; ConnectionManager.sendCommandEncrypted"
+    },
+    "dual_stop": {"plaintext": "Write=1&StSt=0&DelMd=0&PrNm=<current Pr from status>", "evidence": "CandyWasherCommand.stopAsGETString"},
+    "dual_reset_after_end": {"plaintext": "Write=1&Sel=1PrNm=<Pr-1, or 2 if that is 0>", "note": "app bug: missing '&' before PrNm; sent when the user dismisses 'washing completed'", "evidence": "CandyWasherCommand.resetAsGETString"},
+    "dual_pause": "not implemented by the app"
+  }
+}
