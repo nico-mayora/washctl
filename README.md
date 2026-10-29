@@ -2,7 +2,7 @@
   <img src="docs/images/logo.svg" width="112" alt="Washer logo">
 </p>
 
-<h1 align="center">simply-Fi-web</h1>
+<h1 align="center">washctl</h1>
 
 <p align="center">
   Local control for Candy Simply-Fi Wi-Fi washer-dryers: a web app and an Android app that talk
