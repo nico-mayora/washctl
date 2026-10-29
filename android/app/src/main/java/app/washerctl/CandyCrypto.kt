@@ -55,12 +55,16 @@ object CandyCrypto {
         lang: Int = 1, steam: Int = 0, dry: Int = 0, extraDose: Int = 0,
         recipeId: String = "0", delaySteps: Int = 0, checkup: Boolean = false,
     ): String {
+        // Values are converted the way the official app's Command.setProgram does: temperature
+        // 255 ("not adjustable") is left out, spin 255 is sent as 0. '&' and '=' are removed from
+        // the name so they can't split the parameter string.
+        val name = prstr.replace("&", "and").replace("=", "")
         val p = mutableListOf<Pair<String, Any>>(
-            "StSt" to 1, "DelVl" to delaySteps, "PrNm" to prnm, "PrCode" to prcode, "PrStr" to prstr,
+            "StSt" to 1, "DelVl" to delaySteps, "PrNm" to prnm, "PrCode" to prcode, "PrStr" to name,
         )
-        if (temp != null) p += "TmpTgt" to temp
+        if (temp != null && temp != 255) p += "TmpTgt" to temp
         p += "SLevTgt" to (if (soil == 255) 0 else soil)
-        if (spinRpm != null && spinRpm != 255) p += "SpdTgt" to Math.floorDiv(spinRpm, 100)
+        p += "SpdTgt" to (if (spinRpm == null || spinRpm == 255) 0 else Math.floorDiv(spinRpm, 100))
         p += listOf(
             "OptMsk1" to optmsk1, "OptMsk2" to optmsk2, "Lang" to lang, "Stm" to steam, "Dry" to dry,
             "ED" to extraDose, "RecipeId" to recipeId, "StartCheckUp" to (if (checkup) 1 else 0),

@@ -942,7 +942,7 @@ async function doStart() {
           prcode: p.program_code_PrCode,
           prstr: p.name_en || 'Program',
           temp: settings.temp,
-          soil: settings.soil || 0,
+          soil: soilInRange(p, settings.soil),
           spin_rpm: settings.spin,
           optmsk1: settings.optmsk1,
           optmsk2: settings.optmsk2,
@@ -964,6 +964,15 @@ async function doStart() {
   }
   btn.disabled = false;
   btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"/></svg> Start';
+}
+
+// wifible: like the official app, a soil level outside the programme's range (cloud lists use 9)
+// falls back to the programme's minimum.
+function soilInRange(p, soil) {
+  const min = p.soil_level?.min, max = p.soil_level?.max;
+  if (soil == null) return 0;
+  if (min != null && max != null && max >= min && (soil < min || soil > max)) return min;
+  return soil;
 }
 
 async function verifyStarted(unexpectedReply) {

@@ -173,14 +173,17 @@ def wifible_start(*, prnm: int, prcode: int, prstr: str = "Program", temp: int |
                   recipe_id: str = "0", delay_steps: int = 0, checkup: bool = False) -> str:
     """Start string built by axibianca Command.getParameterString (order preserved).
 
-    temp None -> TmpTgt omitted (programme temperature 255). spin_rpm None -> SpdTgt omitted.
+    Values are converted the way the app's Command.setProgram does:
+      temp None/255 ("not adjustable") -> TmpTgt omitted; spin None/255 -> SpdTgt=0 (still sent).
+    Soil must already be within the programme's range (the app falls back to its minimum).
+    '&' and '=' are removed from the programme name so they can't split the parameter string.
     delay_steps: 30-minute steps (0..48), sent with StSt=1."""
-    p = [("StSt", 1), ("DelVl", delay_steps), ("PrNm", prnm), ("PrCode", prcode), ("PrStr", prstr)]
-    if temp is not None:
+    name = prstr.replace("&", "and").replace("=", "")
+    p = [("StSt", 1), ("DelVl", delay_steps), ("PrNm", prnm), ("PrCode", prcode), ("PrStr", name)]
+    if temp is not None and temp != 255:
         p.append(("TmpTgt", temp))
     p.append(("SLevTgt", 0 if soil == 255 else soil))
-    if spin_rpm is not None and spin_rpm != 255:
-        p.append(("SpdTgt", spin_rpm // 100))
+    p.append(("SpdTgt", 0 if spin_rpm is None or spin_rpm == 255 else spin_rpm // 100))
     p += [("OptMsk1", optmsk1), ("OptMsk2", optmsk2), ("Lang", lang), ("Stm", steam), ("Dry", dry),
           ("ED", extra_dose), ("RecipeId", recipe_id), ("StartCheckUp", 1 if checkup else 0),
           ("DispTestOn", 1)]
@@ -348,6 +351,11 @@ def _selftest() -> None:
     assert url.startswith("http://192.0.2.10/http-write.json?encrypted=1&data=")
     assert xor_decrypt(url.split("data=", 1)[1], wd_key) == cmd
     assert xor_decrypt_app_compat(xor_encrypt(cmd, wd_key), wd_key) == cmd
+    # Not-adjustable values and a name with '&', converted like Command.setProgram.
+    cmd = wifible_start(prnm=9, prcode=77, prstr="Rapid Wash & Dry 59'", temp=255, soil=0, spin_rpm=255, dry=8)
+    assert cmd == ("Write=1&StSt=1&DelVl=0&PrNm=9&PrCode=77&PrStr=Rapid Wash and Dry 59'&SLevTgt=0"
+                   "&SpdTgt=0&OptMsk1=0&OptMsk2=0&Lang=1&Stm=0&Dry=8&ED=0&RecipeId=0&StartCheckUp=0"
+                   "&DispTestOn=1"), cmd
 
     # Pause / resume / stop strings.
     assert wifible_pause() == "encrypted=0&Pa=1" and wifible_resume() == "encrypted=0&Pa=0"

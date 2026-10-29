@@ -135,6 +135,7 @@ Write=1&StSt=1&DelVl=<n>&PrNm=<selector>&PrCode=<pr_code>&PrStr=<name>&TmpTgt=<Â
 ```
 
 - `TmpTgt` is omitted when the temperature is not applicable (-1). `SpdTgt` is omitted when spin is 255.
+- Before that, `Command.setProgram` converts the programme's values: temperature 255 becomes -1 (so `TmpTgt` is left out), spin 255 becomes 0 (so `SpdTgt=0` **is** sent), and a default soil level outside the programme's min..max range (cloud lists use 9) becomes the minimum. `PrStr` is not escaped, so a name containing `&` would split the parameter string; washctl removes `&` and `=` from it.
 - A delayed start still sends `StSt=1`, with `DelVl>0`.
 - `Dry` is sent only if the appliance is a `WasherDryer` (`supportsDry`); otherwise `Dry=0`.
 - `ED` is non-zero only on `_ad` (auto-dose) interfaces.

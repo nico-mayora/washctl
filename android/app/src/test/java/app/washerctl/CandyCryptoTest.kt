@@ -31,9 +31,14 @@ class CandyCryptoTest {
             CandyCrypto.wifibleStart(prnm = 11, prcode = 2, prstr = "Eco Cottons", temp = 40, soil = 3, spinRpm = 1400, dry = 3),
         )
         assertEquals(
-            "Write=1&StSt=1&DelVl=2&PrNm=3&PrCode=2&PrStr=Eco 40-60&SLevTgt=0&OptMsk1=0&OptMsk2=1" +
+            "Write=1&StSt=1&DelVl=2&PrNm=3&PrCode=2&PrStr=Eco 40-60&SLevTgt=0&SpdTgt=0&OptMsk1=0&OptMsk2=1" +
                 "&Lang=1&Stm=0&Dry=0&ED=0&RecipeId=0&StartCheckUp=0&DispTestOn=1",
             CandyCrypto.wifibleStart(prnm = 3, prcode = 2, prstr = "Eco 40-60", soil = 255, spinRpm = 255, optmsk2 = 1, delaySteps = 2),
+        )
+        assertEquals(
+            "Write=1&StSt=1&DelVl=0&PrNm=9&PrCode=77&PrStr=Rapid Wash and Dry 59'&SLevTgt=0&SpdTgt=0" +
+                "&OptMsk1=0&OptMsk2=0&Lang=1&Stm=0&Dry=8&ED=0&RecipeId=0&StartCheckUp=0&DispTestOn=1",
+            CandyCrypto.wifibleStart(prnm = 9, prcode = 77, prstr = "Rapid Wash & Dry 59'", temp = 255, spinRpm = 255, dry = 8),
         )
         assertEquals("encrypted=0&Pa=1", CandyCrypto.wifiblePause())
         assertEquals("encrypted=0&Pa=0", CandyCrypto.wifibleResume())
