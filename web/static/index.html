@@ -952,13 +952,13 @@ async function doStart() {
         })
       });
     }
-    if (resp?.response && resp.response !== 'success') {
-      throw new Error(`The washer rejected the command (reply: ${resp.response}).`);
-    }
+    // The washer replies {"response":"SUCCESS"} (the case varies by firmware). Its status is
+    // the real test, so an unexpected reply is only mentioned if the washer then doesn't start.
+    const reply = resp?.response;
+    const odd = reply != null && String(reply).toLowerCase() !== 'success' ? String(reply) : null;
     toast('Sent. Checking the washer…');
     // Keep the selection until the start is confirmed, so Start can simply be retried.
-    // The washer can accept a command and still not start, so confirm from its status.
-    setTimeout(verifyStarted, 4000);
+    setTimeout(() => verifyStarted(odd), 4000);
   } catch (e) {
     showError(e.message);
   }
@@ -966,7 +966,7 @@ async function doStart() {
   btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"/></svg> Start';
 }
 
-async function verifyStarted() {
+async function verifyStarted(unexpectedReply) {
   try {
     machineStatus = await api('/api/status?force=true');
     updateStatusUI();
@@ -974,13 +974,15 @@ async function verifyStarted() {
     const mm = machineStatus.machine_mode?.[0];
     if (mm >= 2 && mm <= 5) {
       selectedProg = null;
+      hideError();
       toast(mm >= 4 ? 'Delayed start set' : 'Started!');
     } else if (machineStatus.remote_control_enabled === false) {
       showError(REMOTE_OFF_MSG);
     } else if (mm === 6) {
       showError(`The washer reported an error (code ${machineStatus.error_code}) and didn't start.`);
     } else {
-      showError("The washer didn't start. Check the door is closed and the washer is ready, then try again.");
+      const said = unexpectedReply ? ` It replied "${unexpectedReply}".` : '';
+      showError(`The washer didn't start.${said} Check the door is closed and the washer is ready, then try again.`);
     }
   } catch (e) {
     showError(`Couldn't confirm the washer started: ${e.message}`);

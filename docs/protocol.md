@@ -57,7 +57,7 @@ All class paths below are relative to the JADX output, e.g. `it/candyhoover/core
 | `http-write.json` with `GetStat=1` | Statistics | `washer/axibianca/services/statistics/StatisticsService` (`xorEncrypt("GetStat=1", key)`) |
 | `http-prepareStatistics.json?encrypted=1`, `http-getStatistics.json?encrypted=1` | Statistics (two steps) | same class |
 
-- **Successful reply:** the plaintext is JSON containing `"response":"success"`. Writes are encrypted with the session key (`Washer.sendLocalCommand`, `ConnectionManager.sendCommandEncrypted`). **high**
+- **Successful reply:** the plaintext is JSON containing `"response":"success"`. A real CSOW 4855TWE/1-S (dual) replies `"SUCCESS"` in upper case, so compare case-insensitively; the reply only means the command was received, not that the cycle started (see `WiFiStatus` below). Writes are encrypted with the session key (`Washer.sendLocalCommand`, `ConnectionManager.sendCommandEncrypted`). **high**
 - **After a successful start:** the app waits 3 s, then reads status again (`Washer.onCommandSendSuccessful`, `postDelayed(...,3000L)`). **high**
 - **Throttling:** commands are queued; while a command is in flight, status polling is paused (`CandyAppliance.elaborateCommandsInQueue`, `sanityTimer`). **high**
 
