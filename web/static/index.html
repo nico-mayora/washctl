@@ -369,6 +369,9 @@ const MODE_NAMES = {0:'Off',1:'Ready',2:'Running',3:'Paused',4:'Delay set',5:'Co
 const DRY_NAMES_WIFIBLE = {0:'None',1:'Extra',2:'Iron',3:'Cupboard',5:'120 min',6:'90 min',7:'60 min',8:'30 min',9:'Wool'};
 const DRY_NAMES_DUAL = {0:'None',1:'Extra',2:'Cupboard',3:'Iron',5:'120 min',6:'90 min',7:'60 min',8:'30 min',9:'Wool'};
 function dryName(v) { return (config.protocol === 'dual' ? DRY_NAMES_DUAL : DRY_NAMES_WIFIBLE)[v] || String(v); }
+// The washer and Candy's programme data use 0 and 255 for "not used / not adjustable"
+// (e.g. temperature and spin during drying), so those aren't real values to display.
+function realValue(v) { return v != null && v !== 0 && v !== 255; }
 const STEAM_NAMES = {0:'None',1:'Cotton',2:'Mixed',3:'Refresh',5:'On'};
 const OPT_NAMES = {1:'Pre-wash',2:'Hygiene',4:'Anti-crease',8:'Good Night',16:'Rinse +1',32:'Rinse +2',64:'Rinse +3',128:'Aquaplus'};
 const OPT_BITS = [1,2,4,8,16,32,64,128];
@@ -588,8 +591,8 @@ function renderRunningStatus(st, paused, finished, error) {
   // Details
   const detail = document.getElementById('statusDetail');
   let dhtml = '';
-  if (st.temperature_C != null) dhtml += `<div class="detail-item"><div class="detail-val">${st.temperature_C}°</div><div class="detail-label">Temp</div></div>`;
-  if (st.spin_rpm != null) dhtml += `<div class="detail-item"><div class="detail-val">${st.spin_rpm}</div><div class="detail-label">Spin RPM</div></div>`;
+  if (realValue(st.temperature_C)) dhtml += `<div class="detail-item"><div class="detail-val">${st.temperature_C}°</div><div class="detail-label">Temp</div></div>`;
+  if (realValue(st.spin_rpm)) dhtml += `<div class="detail-item"><div class="detail-val">${st.spin_rpm}</div><div class="detail-label">Spin RPM</div></div>`;
   if (st.soil_level != null && st.soil_level > 0) dhtml += `<div class="detail-item"><div class="detail-val">${['—','Light','Med','Heavy'][st.soil_level]||st.soil_level}</div><div class="detail-label">Soil</div></div>`;
   detail.innerHTML = dhtml;
 }
@@ -684,7 +687,7 @@ function renderProgrammes() {
     html += `<div class="prog-group-label">${cat}</div>`;
     for (const p of progs) {
       const ic = progIcon(p);
-      const tempStr = p.temperature_C?.default != null ? `${p.temperature_C.default}°` : '';
+      const tempStr = realValue(p.temperature_C?.default) ? `${p.temperature_C.default}°` : '';
       const durStr = p.default_duration_min ? `${p.default_duration_min}m` : '';
       const extras = [];
       if (p.steam_raw > 0 && p.steam_raw !== 255) extras.push('Steam');
@@ -1017,8 +1020,8 @@ function renderFavourites() {
     const ic = prog ? progIcon(prog) : { cls: 'wash', icon: '⭐' };
     const s = fav.settings || {};
     const tags = [];
-    if (s.temp) tags.push(`${s.temp}°`);
-    if (s.spin) tags.push(`${s.spin} rpm`);
+    if (realValue(s.temp)) tags.push(`${s.temp}°`);
+    if (realValue(s.spin)) tags.push(`${s.spin} rpm`);
     if (s.dry > 0) tags.push(dryName(s.dry));
     html += `<div class="fav-item" onclick="startFavourite('${fav.id}')">
       <div class="fav-icon">${ic.icon}</div>
