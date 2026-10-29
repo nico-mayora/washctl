@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/images/logo.svg" width="112" alt="Washer logo">
+  <img src="docs/images/logo.svg" width="112" alt="washctl logo">
 </p>
 
 <h1 align="center">washctl</h1>
